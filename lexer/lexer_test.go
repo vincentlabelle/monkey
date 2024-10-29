@@ -145,9 +145,9 @@ func Test(t *testing.T) {
 	}
 
 	for _, setup_ := range setup {
-		lexer := New(setup_.input)
+		lex := New(setup_.input)
 		for _, expected := range setup_.expected {
-			actual := lexer.NextToken()
+			actual := lex.NextToken()
 			if actual != expected {
 				t.Fatalf("expected=%v, actual=%v", expected, actual)
 			}
