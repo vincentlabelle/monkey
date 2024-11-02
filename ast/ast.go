@@ -5,9 +5,11 @@ type Node interface {
 }
 
 type Statement interface {
+	Node
 	statementNode()
 }
 type Expression interface {
+	Node
 	expressionNode()
 }
 
