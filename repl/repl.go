@@ -24,8 +24,11 @@ func Start(in io.Reader, out io.Writer) {
 		if !scanned {
 			return
 		}
-
 		line := scanner.Text()
+		if line == "exit()" {
+			return
+		}
+
 		lex := lexer.New(line)
 		p := parser.New(lex)
 		program := p.ParseProgram()

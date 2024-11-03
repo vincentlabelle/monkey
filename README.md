@@ -46,4 +46,4 @@ go install
 ## Usage
 
 The REPL can be run by executing `monkey` in your shell (if `~/go/bin` is in
-your `PATH`).
+your `PATH`), and you can exit the REPL by typing `exit()`.
