@@ -9,7 +9,7 @@ Go._](https://interpreterbook.com/).
 The Monkey programming language has the following features:
 
 - Variable bindings
-- Integers and booleans
+- Integers, booleans, and strings
 - Arithmetic operations
 - First-class and higher-order functions
 - Closures

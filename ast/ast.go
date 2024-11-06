@@ -8,6 +8,7 @@ type Statement interface {
 	Node
 	statementNode()
 }
+
 type Expression interface {
 	Node
 	expressionNode()
@@ -110,3 +111,10 @@ type CallExpression struct {
 
 func (ce *CallExpression) node()           {}
 func (ce *CallExpression) expressionNode() {}
+
+type StringLiteral struct {
+	Value string
+}
+
+func (sl *StringLiteral) node()           {}
+func (sl *StringLiteral) expressionNode() {}

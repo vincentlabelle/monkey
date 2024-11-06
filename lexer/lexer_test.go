@@ -64,7 +64,9 @@ func Test(t *testing.T) {
 			}
 
 			10 == 10;
-			10 != 9;`,
+			10 != 9;
+			"foobar"
+			"foo bar"`,
 			[]token.Token{
 				{Type: token.LET, Literal: "let"},
 				{Type: token.IDENT, Literal: "five"},
@@ -139,14 +141,16 @@ func Test(t *testing.T) {
 				{Type: token.NE, Literal: "!="},
 				{Type: token.INT, Literal: "9"},
 				{Type: token.SEMICOLON, Literal: ";"},
+				{Type: token.STRING, Literal: "foobar"},
+				{Type: token.STRING, Literal: "foo bar"},
 				{Type: token.EOF, Literal: ""},
 			},
 		},
 	}
 
-	for _, setup_ := range setup {
-		lex := New(setup_.input)
-		for _, expected := range setup_.expected {
+	for _, s := range setup {
+		lex := New(s.input)
+		for _, expected := range s.expected {
 			actual := lex.NextToken()
 			if actual != expected {
 				t.Fatalf("expected=%v, actual=%v", expected, actual)

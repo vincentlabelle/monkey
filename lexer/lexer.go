@@ -54,6 +54,8 @@ func (l *Lexer) nextToken() token.Token {
 		tok = tok_
 	} else if tok_, ok := l.getLetter(); ok {
 		tok = tok_
+	} else if tok_, ok := l.getQuoted(); ok {
+		tok = tok_
 	} else {
 		tok = token.Token{Type: token.ILLEGAL, Literal: l.getUnaryString()}
 		l.forward(1)
@@ -161,4 +163,31 @@ func (l *Lexer) getLetterType(literal string) token.TokenType {
 		return type_
 	}
 	return token.IDENT
+}
+
+func (l *Lexer) getQuoted() (token.Token, bool) {
+	if !l.isQuote() {
+		return token.Token{}, false
+	}
+	return l.getQuotedToken(), true
+}
+
+func (l *Lexer) isQuote() bool {
+	return l.getUnaryChar() == '"'
+}
+
+func (l *Lexer) getQuotedToken() token.Token {
+	literal := l.getQuotedLiteral()
+	return token.Token{Type: token.STRING, Literal: literal}
+}
+
+func (l *Lexer) getQuotedLiteral() string {
+	l.forward(1)
+	literal := ""
+	for !l.isEOF() && !l.isQuote() {
+		literal += l.getUnaryString()
+		l.forward(1)
+	}
+	l.forward(1)
+	return literal
 }

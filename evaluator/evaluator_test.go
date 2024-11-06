@@ -154,6 +154,14 @@ func Test(t *testing.T) {
 			`,
 			&object.Integer{Value: 4},
 		},
+		{
+			`"Hello World!"`,
+			&object.String{Value: "Hello World!"},
+		},
+		{
+			`"Hello" + " "  + "World!"`,
+			&object.String{Value: "Hello World!"},
+		},
 	}
 	for _, s := range setup {
 		lex := lexer.New(s.input)
@@ -187,6 +195,27 @@ func testObject(t *testing.T, actual object.Object, expected object.Object) {
 			)
 		}
 		testBoolean(t, a, e)
+	case *object.String:
+		a, ok := actual.(*object.String)
+		if !ok {
+			t.Fatalf(
+				"object type mismatch. got=%T, expected=%T",
+				actual,
+				expected,
+			)
+		}
+		testString(t, a, e)
+	case *object.Null:
+		_, ok := actual.(*object.Null)
+		if !ok {
+			t.Fatalf(
+				"object type mismatch. got=%T, expected=%T",
+				actual,
+				expected,
+			)
+		}
+	default:
+		t.Fatal("object type unknown")
 	}
 }
 
@@ -212,6 +241,20 @@ func testBoolean(
 	if actual.Value != expected.Value {
 		t.Fatalf(
 			"boolean value mismatch. got=%v, expected=%v",
+			actual.Value,
+			expected.Value,
+		)
+	}
+}
+
+func testString(
+	t *testing.T,
+	actual *object.String,
+	expected *object.String,
+) {
+	if actual.Value != expected.Value {
+		t.Fatalf(
+			"string value mismatch. got=%v, expected=%v",
 			actual.Value,
 			expected.Value,
 		)

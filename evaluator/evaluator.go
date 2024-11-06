@@ -45,6 +45,8 @@ func evalExpression(
 		obj = nativeToInteger(e.Value)
 	case *ast.BooleanLiteral:
 		obj = nativeToBoolean(e.Value)
+	case *ast.StringLiteral:
+		obj = nativeToString(e.Value)
 	case *ast.Identifier:
 		obj = evalIdentifier(e, env)
 	case *ast.PrefixExpression:
@@ -73,6 +75,10 @@ func nativeToBoolean(native bool) *object.Boolean {
 		return TRUE
 	}
 	return FALSE
+}
+
+func nativeToString(native string) *object.String {
+	return &object.String{Value: native}
 }
 
 func evalIdentifier(
@@ -151,10 +157,12 @@ func innerEvalInfixExpression(
 	right object.Object,
 ) object.Object {
 	var obj object.Object
-	lint, lok := left.(*object.Integer)
-	rint, rok := right.(*object.Integer)
-	if lok && rok {
-		obj = evalIntegerInfixExpression(lint, operator, rint)
+	if isPtrToType(left, "Integer") && isPtrToType(right, "Integer") {
+		l, r := left.(*object.Integer), right.(*object.Integer)
+		obj = evalIntegerInfixExpression(l, operator, r)
+	} else if isPtrToType(left, "String") && isPtrToType(right, "String") {
+		l, r := left.(*object.String), right.(*object.String)
+		obj = evalStringInfixExpression(l, operator, r)
 	} else if operator == "==" {
 		obj = nativeToBoolean(left == right)
 	} else if operator == "!=" {
@@ -169,6 +177,11 @@ func innerEvalInfixExpression(
 		log.Fatal(message)
 	}
 	return obj
+}
+
+func isPtrToType(obj object.Object, name string) bool {
+	type_ := reflect.TypeOf(obj)
+	return type_.Kind() == reflect.Pointer && type_.Elem().Name() == name
 }
 
 func evalIntegerInfixExpression(
@@ -194,6 +207,23 @@ func evalIntegerInfixExpression(
 		obj = nativeToBoolean(left.Value == right.Value)
 	case "!=":
 		obj = nativeToBoolean(left.Value != right.Value)
+	default:
+		message := `cannot parse program; 
+			unexpected operator for infix expression`
+		log.Fatal(message)
+	}
+	return obj
+}
+
+func evalStringInfixExpression(
+	left *object.String,
+	operator string,
+	right *object.String,
+) *object.String {
+	var obj *object.String
+	switch operator {
+	case "+":
+		obj = nativeToString(left.Value + right.Value)
 	default:
 		message := `cannot parse program; 
 			unexpected operator for infix expression`

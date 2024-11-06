@@ -93,6 +93,8 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 		expression = p.parseIntegerLiteral()
 	} else if p.isCurToken(token.TRUE) || p.isCurToken(token.FALSE) {
 		expression = p.parseBooleanLiteral()
+	} else if p.isCurToken(token.STRING) {
+		expression = p.parseStringLiteral()
 	} else if p.isCurToken(token.BANG) || p.isCurToken(token.MINUS) {
 		expression = p.parsePrefix()
 	} else if p.isCurToken(token.LPAREN) {
@@ -119,6 +121,10 @@ func (p *Parser) parseIntegerLiteral() *ast.IntegerLiteral {
 
 func (p *Parser) parseBooleanLiteral() *ast.BooleanLiteral {
 	return &ast.BooleanLiteral{Value: p.isCurToken(token.TRUE)}
+}
+
+func (p *Parser) parseStringLiteral() *ast.StringLiteral {
+	return &ast.StringLiteral{Value: p.curToken.Literal}
 }
 
 func (p *Parser) parsePrefix() *ast.PrefixExpression {

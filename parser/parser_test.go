@@ -734,6 +734,16 @@ func Test(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: `"hello world";`,
+			expected: &ast.Program{
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Expression: &ast.StringLiteral{Value: "hello world"},
+					},
+				},
+			},
+		},
 	}
 
 	for _, s := range setup {
@@ -797,6 +807,8 @@ func testStatement(
 			)
 		}
 		testLetStatement(t, a, e)
+	default:
+		t.Fatal("statement type unknown")
 	}
 }
 
@@ -894,6 +906,18 @@ func testExpression(
 			)
 		}
 		testCallExpression(t, a, e)
+	case *ast.StringLiteral:
+		a, ok := actual.(*ast.StringLiteral)
+		if !ok {
+			t.Fatalf(
+				"expression type mismatch. got=%T, expected=%T",
+				actual,
+				expected,
+			)
+		}
+		testStringLiteral(t, a, e)
+	default:
+		t.Fatal("expression type unknown")
 	}
 
 }
@@ -1045,6 +1069,20 @@ func testExpressions(
 	}
 	for i := 0; i < len(actual); i++ {
 		testExpression(t, actual[i], expected[i])
+	}
+}
+
+func testStringLiteral(
+	t *testing.T,
+	actual *ast.StringLiteral,
+	expected *ast.StringLiteral,
+) {
+	if actual.Value != expected.Value {
+		t.Fatalf(
+			"string literal value mismatch. got=%v, expected=%v",
+			actual.Value,
+			expected.Value,
+		)
 	}
 }
 

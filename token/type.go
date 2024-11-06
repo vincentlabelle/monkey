@@ -20,6 +20,7 @@ const (
 	LBRACE    = "{"
 	RBRACE    = "}"
 	INT       = "INT"
+	STRING    = "STRING"
 	FUNCTION  = "FUNCTION"
 	LET       = "LET"
 	TRUE      = "TRUE"

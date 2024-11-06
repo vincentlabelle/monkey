@@ -26,6 +26,14 @@ func (b *Boolean) Inspect() string {
 	return fmt.Sprintf("%v", b.Value)
 }
 
+type String struct {
+	Value string
+}
+
+func (s *String) Inspect() string {
+	return s.Value
+}
+
 type Null struct{}
 
 func (n *Null) Inspect() string {
