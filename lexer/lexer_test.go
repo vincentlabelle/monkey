@@ -66,7 +66,8 @@ func Test(t *testing.T) {
 			10 == 10;
 			10 != 9;
 			"foobar"
-			"foo bar"`,
+			"foo bar"
+			[1, 2];`,
 			[]token.Token{
 				{Type: token.LET, Literal: "let"},
 				{Type: token.IDENT, Literal: "five"},
@@ -143,6 +144,12 @@ func Test(t *testing.T) {
 				{Type: token.SEMICOLON, Literal: ";"},
 				{Type: token.STRING, Literal: "foobar"},
 				{Type: token.STRING, Literal: "foo bar"},
+				{Type: token.LBRACKET, Literal: "["},
+				{Type: token.INT, Literal: "1"},
+				{Type: token.COMMA, Literal: ","},
+				{Type: token.INT, Literal: "2"},
+				{Type: token.RBRACKET, Literal: "]"},
+				{Type: token.SEMICOLON, Literal: ";"},
 				{Type: token.EOF, Literal: ""},
 			},
 		},

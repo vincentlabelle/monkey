@@ -7,7 +7,7 @@ type Environment struct {
 
 func NewEnvironment() *Environment {
 	outer := newBuiltinEnvironment()
-	return &Environment{store: map[string]Object{}, outer: outer}
+	return NewInnerEnvironment(outer)
 }
 
 func newBuiltinEnvironment() *Environment {
@@ -18,9 +18,13 @@ func newBuiltinEnvironment() *Environment {
 }
 
 func NewInnerEnvironment(outer *Environment) *Environment {
-	env := NewEnvironment()
+	env := newEnvironment()
 	env.outer = outer
 	return env
+}
+
+func newEnvironment() *Environment {
+	return &Environment{store: map[string]Object{}}
 }
 
 func (e *Environment) Get(name string) (Object, bool) {

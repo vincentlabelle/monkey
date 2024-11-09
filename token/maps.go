@@ -15,6 +15,8 @@ var Unary = map[byte]TokenType{
 	')': RPAREN,
 	'{': LBRACE,
 	'}': RBRACE,
+	'[': LBRACKET,
+	']': RBRACKET,
 }
 
 var Binary = map[string]TokenType{

@@ -19,6 +19,8 @@ const (
 	RPAREN    = ")"
 	LBRACE    = "{"
 	RBRACE    = "}"
+	LBRACKET  = "["
+	RBRACKET  = "]"
 	INT       = "INT"
 	STRING    = "STRING"
 	FUNCTION  = "FUNCTION"

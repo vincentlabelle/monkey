@@ -410,7 +410,7 @@ func Test(t *testing.T) {
 			},
 		},
 		{
-			input: `3 + 4; -5 * 5`,
+			input: `3 + 4; -5 * 5;`,
 			expected: &ast.Program{
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
@@ -434,7 +434,7 @@ func Test(t *testing.T) {
 			},
 		},
 		{
-			input: `5 > 4 == 3 < 4`,
+			input: `5 > 4 == 3 < 4;`,
 			expected: &ast.Program{
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
@@ -456,7 +456,7 @@ func Test(t *testing.T) {
 			},
 		},
 		{
-			input: `5 > 4 != 3 < 4`,
+			input: `5 > 4 != 3 < 4;`,
 			expected: &ast.Program{
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
@@ -478,7 +478,7 @@ func Test(t *testing.T) {
 			},
 		},
 		{
-			input: `1 + (2 + 3) + 4`,
+			input: `1 + (2 + 3) + 4;`,
 			expected: &ast.Program{
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
@@ -500,7 +500,7 @@ func Test(t *testing.T) {
 			},
 		},
 		{
-			input: `2 * (5 + 5)`,
+			input: `2 * (5 + 5);`,
 			expected: &ast.Program{
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
@@ -518,7 +518,7 @@ func Test(t *testing.T) {
 			},
 		},
 		{
-			input: `(5 + 5) * 2 * (5 + 5)`,
+			input: `(5 + 5) * 2 * (5 + 5);`,
 			expected: &ast.Program{
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
@@ -544,7 +544,7 @@ func Test(t *testing.T) {
 			},
 		},
 		{
-			input: `!(5 + 5)`,
+			input: `!(5 + 5);`,
 			expected: &ast.Program{
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
@@ -561,7 +561,7 @@ func Test(t *testing.T) {
 			},
 		},
 		{
-			input: `if (x < y) { x }`,
+			input: `if (x < y) { x };`,
 			expected: &ast.Program{
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
@@ -586,7 +586,7 @@ func Test(t *testing.T) {
 			},
 		},
 		{
-			input: `if (x < y) { x } else { y }`,
+			input: `if (x < y) { x } else { y };`,
 			expected: &ast.Program{
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
@@ -740,6 +740,130 @@ func Test(t *testing.T) {
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
 						Expression: &ast.StringLiteral{Value: "hello world"},
+					},
+				},
+			},
+		},
+		{
+			input: `[];`,
+			expected: &ast.Program{
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Expression: &ast.ArrayLiteral{
+							Elements: []ast.Expression{},
+						},
+					},
+				},
+			},
+		},
+		{
+			input: `[1, 2 * 2, 3 + 3];`,
+			expected: &ast.Program{
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Expression: &ast.ArrayLiteral{
+							Elements: []ast.Expression{
+								&ast.IntegerLiteral{Value: 1},
+								&ast.InfixExpression{
+									Left:     &ast.IntegerLiteral{Value: 2},
+									Operator: "*",
+									Right:    &ast.IntegerLiteral{Value: 2},
+								},
+								&ast.InfixExpression{
+									Left:     &ast.IntegerLiteral{Value: 3},
+									Operator: "+",
+									Right:    &ast.IntegerLiteral{Value: 3},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			input: `myArray[1 + 1];`,
+			expected: &ast.Program{
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Expression: &ast.IndexExpression{
+							Left: &ast.Identifier{Value: "myArray"},
+							Index: &ast.InfixExpression{
+								Left:     &ast.IntegerLiteral{Value: 1},
+								Operator: "+",
+								Right:    &ast.IntegerLiteral{Value: 1},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			input: `a * [1, 2, 3, 4][b * c] * d;`,
+			expected: &ast.Program{
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Expression: &ast.InfixExpression{
+							Left: &ast.InfixExpression{
+								Left:     &ast.Identifier{Value: "a"},
+								Operator: "*",
+								Right: &ast.IndexExpression{
+									Left: &ast.ArrayLiteral{
+										Elements: []ast.Expression{
+											&ast.IntegerLiteral{Value: 1},
+											&ast.IntegerLiteral{Value: 2},
+											&ast.IntegerLiteral{Value: 3},
+											&ast.IntegerLiteral{Value: 4},
+										},
+									},
+									Index: &ast.InfixExpression{
+										Left:     &ast.Identifier{Value: "b"},
+										Operator: "*",
+										Right:    &ast.Identifier{Value: "c"},
+									},
+								},
+							},
+							Operator: "*",
+							Right:    &ast.Identifier{Value: "d"},
+						},
+					},
+				},
+			},
+		},
+		{
+			input: `add(a * b[2], b[1], 2 * [1, 2][1])`,
+			expected: &ast.Program{
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Expression: &ast.CallExpression{
+							Function: &ast.Identifier{Value: "add"},
+							Arguments: []ast.Expression{
+								&ast.InfixExpression{
+									Left:     &ast.Identifier{Value: "a"},
+									Operator: "*",
+									Right: &ast.IndexExpression{
+										Left:  &ast.Identifier{Value: "b"},
+										Index: &ast.IntegerLiteral{Value: 2},
+									},
+								},
+								&ast.IndexExpression{
+									Left:  &ast.Identifier{Value: "b"},
+									Index: &ast.IntegerLiteral{Value: 1},
+								},
+								&ast.InfixExpression{
+									Left:     &ast.IntegerLiteral{Value: 2},
+									Operator: "*",
+									Right: &ast.IndexExpression{
+										Left: &ast.ArrayLiteral{
+											Elements: []ast.Expression{
+												&ast.IntegerLiteral{Value: 1},
+												&ast.IntegerLiteral{Value: 2},
+											},
+										},
+										Index: &ast.IntegerLiteral{Value: 1},
+									},
+								},
+							},
+						},
 					},
 				},
 			},
@@ -916,6 +1040,26 @@ func testExpression(
 			)
 		}
 		testStringLiteral(t, a, e)
+	case *ast.ArrayLiteral:
+		a, ok := actual.(*ast.ArrayLiteral)
+		if !ok {
+			t.Fatalf(
+				"expression type mismatch. got=%T, expected=%T",
+				actual,
+				expected,
+			)
+		}
+		testArrayLiteral(t, a, e)
+	case *ast.IndexExpression:
+		a, ok := actual.(*ast.IndexExpression)
+		if !ok {
+			t.Fatalf(
+				"expression type mismatch. got=%T, expected=%T",
+				actual,
+				expected,
+			)
+		}
+		testIndexExpression(t, a, e)
 	default:
 		t.Fatal("expression type unknown")
 	}
@@ -1084,6 +1228,23 @@ func testStringLiteral(
 			expected.Value,
 		)
 	}
+}
+
+func testArrayLiteral(
+	t *testing.T,
+	actual *ast.ArrayLiteral,
+	expected *ast.ArrayLiteral,
+) {
+	testExpressions(t, actual.Elements, expected.Elements)
+}
+
+func testIndexExpression(
+	t *testing.T,
+	actual *ast.IndexExpression,
+	expected *ast.IndexExpression,
+) {
+	testExpression(t, actual.Left, expected.Left)
+	testExpression(t, actual.Index, expected.Index)
 }
 
 func testReturnStatement(

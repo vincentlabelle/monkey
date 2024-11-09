@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/vincentlabelle/monkey/ast"
 )
@@ -32,6 +33,18 @@ type String struct {
 
 func (s *String) Inspect() string {
 	return s.Value
+}
+
+type Array struct {
+	Elements []Object
+}
+
+func (a *Array) Inspect() string {
+	elements := []string{}
+	for _, e := range a.Elements {
+		elements = append(elements, e.Inspect())
+	}
+	return "[" + strings.Join(elements, ", ") + "]"
 }
 
 type Null struct{}

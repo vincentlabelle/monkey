@@ -28,13 +28,6 @@ type LetStatement struct {
 func (ls *LetStatement) node()          {}
 func (ls *LetStatement) statementNode() {}
 
-type Identifier struct {
-	Value string
-}
-
-func (i *Identifier) node()           {}
-func (i *Identifier) expressionNode() {}
-
 type ReturnStatement struct {
 	Value Expression
 }
@@ -49,12 +42,55 @@ type ExpressionStatement struct {
 func (es *ExpressionStatement) node()          {}
 func (es *ExpressionStatement) statementNode() {}
 
+type BlockStatement struct {
+	Statements []Statement
+}
+
+func (bs *BlockStatement) node()          {}
+func (bs *BlockStatement) statementNode() {}
+
+type Identifier struct {
+	Value string
+}
+
+func (i *Identifier) node()           {}
+func (i *Identifier) expressionNode() {}
+
 type IntegerLiteral struct {
 	Value int
 }
 
 func (il *IntegerLiteral) node()           {}
 func (il *IntegerLiteral) expressionNode() {}
+
+type BooleanLiteral struct {
+	Value bool
+}
+
+func (bl *BooleanLiteral) node()           {}
+func (bl *BooleanLiteral) expressionNode() {}
+
+type FunctionLiteral struct {
+	Parameters []*Identifier
+	Body       *BlockStatement
+}
+
+func (fl *FunctionLiteral) node()           {}
+func (fl *FunctionLiteral) expressionNode() {}
+
+type StringLiteral struct {
+	Value string
+}
+
+func (sl *StringLiteral) node()           {}
+func (sl *StringLiteral) expressionNode() {}
+
+type ArrayLiteral struct {
+	Elements []Expression
+}
+
+func (al *ArrayLiteral) node()           {}
+func (al *ArrayLiteral) expressionNode() {}
 
 type PrefixExpression struct {
 	Operator string
@@ -73,13 +109,6 @@ type InfixExpression struct {
 func (ie *InfixExpression) node()           {}
 func (ie *InfixExpression) expressionNode() {}
 
-type BooleanLiteral struct {
-	Value bool
-}
-
-func (bl *BooleanLiteral) node()           {}
-func (bl *BooleanLiteral) expressionNode() {}
-
 type IfExpression struct {
 	Condition   Expression
 	Consequence *BlockStatement
@@ -89,21 +118,6 @@ type IfExpression struct {
 func (ie *IfExpression) node()           {}
 func (ie *IfExpression) expressionNode() {}
 
-type BlockStatement struct {
-	Statements []Statement
-}
-
-func (bs *BlockStatement) node()          {}
-func (bs *BlockStatement) statementNode() {}
-
-type FunctionLiteral struct {
-	Parameters []*Identifier
-	Body       *BlockStatement
-}
-
-func (fl *FunctionLiteral) node()           {}
-func (fl *FunctionLiteral) expressionNode() {}
-
 type CallExpression struct {
 	Function  Expression
 	Arguments []Expression
@@ -112,9 +126,10 @@ type CallExpression struct {
 func (ce *CallExpression) node()           {}
 func (ce *CallExpression) expressionNode() {}
 
-type StringLiteral struct {
-	Value string
+type IndexExpression struct {
+	Left  Expression
+	Index Expression
 }
 
-func (sl *StringLiteral) node()           {}
-func (sl *StringLiteral) expressionNode() {}
+func (ie *IndexExpression) node()           {}
+func (ie *IndexExpression) expressionNode() {}

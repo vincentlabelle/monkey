@@ -103,6 +103,8 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 		expression = p.parseIfExpression()
 	} else if p.isCurToken(token.FUNCTION) {
 		expression = p.parseFunctionLiteral()
+	} else if p.isCurToken(token.LBRACKET) {
+		expression = p.parseArrayLiteral()
 	} else {
 		message := "cannot parse program; cannot parse prefix expression for %v"
 		log.Fatalf(message, p.curToken.Type)
@@ -196,6 +198,10 @@ func (p *Parser) parseElse() *ast.BlockStatement {
 	return block
 }
 
+func (p *Parser) isPeekToken(type_ token.TokenType) bool {
+	return p.peekToken.Type == type_
+}
+
 func (p *Parser) parseFunctionLiteral() *ast.FunctionLiteral {
 	p.forward()
 	if !p.isCurToken(token.LPAREN) {
@@ -218,10 +224,6 @@ func (p *Parser) parseFunctionParameters() []*ast.Identifier {
 		return []*ast.Identifier{}
 	}
 	return p.innerParseFunctionParameters()
-}
-
-func (p *Parser) isPeekToken(type_ token.TokenType) bool {
-	return p.peekToken.Type == type_
 }
 
 func (p *Parser) innerParseFunctionParameters() []*ast.Identifier {
@@ -250,6 +252,38 @@ func (p *Parser) parseFunctionParameter() *ast.Identifier {
 	return p.parseIdentifier()
 }
 
+func (p *Parser) parseArrayLiteral() *ast.ArrayLiteral {
+	elements := p.parseExpressionList(token.RBRACKET)
+	return &ast.ArrayLiteral{Elements: elements}
+}
+
+func (p *Parser) parseExpressionList(end token.TokenType) []ast.Expression {
+	if p.isPeekToken(end) {
+		p.forward()
+		return []ast.Expression{}
+	}
+	return p.innerParseExpressionList(end)
+}
+
+func (p *Parser) innerParseExpressionList(
+	end token.TokenType,
+) []ast.Expression {
+	p.forward()
+	expressions := []ast.Expression{p.parseExpression(LOWEST)}
+	p.forward()
+	for p.isCurToken(token.COMMA) {
+		p.forward()
+		expression := p.parseExpression(LOWEST)
+		expressions = append(expressions, expression)
+		p.forward()
+	}
+	if !p.isCurToken(end) {
+		message := "cannot parse program; missing %v in expression list"
+		log.Fatalf(message, end)
+	}
+	return expressions
+}
+
 func (p *Parser) peekPrecedence() int {
 	return p.precedence(p.peekToken.Type)
 }
@@ -274,6 +308,8 @@ func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 		expression = p.parseInfix(left)
 	} else if p.isCurToken(token.LPAREN) {
 		return p.parseCallExpression(left)
+	} else if p.isCurToken(token.LBRACKET) {
+		return p.parseIndexExpression(left)
 	} else {
 		expression = left
 	}
@@ -295,33 +331,21 @@ func (p *Parser) curPrecedence() int {
 func (p *Parser) parseCallExpression(
 	left ast.Expression,
 ) *ast.CallExpression {
-	arguments := p.parseCallArguments()
+	arguments := p.parseExpressionList(token.RPAREN)
 	return &ast.CallExpression{Function: left, Arguments: arguments}
 }
 
-func (p *Parser) parseCallArguments() []ast.Expression {
-	if p.isPeekToken(token.RPAREN) {
-		p.forward()
-		return []ast.Expression{}
-	}
-	return p.innerParseCallArguments()
-}
-
-func (p *Parser) innerParseCallArguments() []ast.Expression {
+func (p *Parser) parseIndexExpression(
+	left ast.Expression,
+) *ast.IndexExpression {
 	p.forward()
-	arguments := []ast.Expression{p.parseExpression(LOWEST)}
+	index := p.parseExpression(LOWEST)
 	p.forward()
-	for p.isCurToken(token.COMMA) {
-		p.forward()
-		argument := p.parseExpression(LOWEST)
-		arguments = append(arguments, argument)
-		p.forward()
-	}
-	if !p.isCurToken(token.RPAREN) {
-		message := "cannot parse program; missing ) after call"
+	if !p.isCurToken(token.RBRACKET) {
+		message := "cannot parse program; missing ] in index expression"
 		log.Fatal(message)
 	}
-	return arguments
+	return &ast.IndexExpression{Left: left, Index: index}
 }
 
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {

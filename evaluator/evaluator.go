@@ -59,6 +59,10 @@ func evalExpression(
 		obj = evalFunctionLiteral(e, env)
 	case *ast.CallExpression:
 		obj = evalCallExpression(e, env)
+	case *ast.ArrayLiteral:
+		obj = evalArrayLiteral(e, env)
+	case *ast.IndexExpression:
+		obj = evalIndexExpression(e, env)
 	default:
 		message := "cannot evaluate program; unexpected expression type"
 		log.Fatal(message)
@@ -321,17 +325,17 @@ func evalCallExpression(
 	env *object.Environment,
 ) object.Object {
 	function := evalExpression(expression.Function, env)
-	arguments := evalCallExpressionArguments(expression, env)
+	arguments := evalExpressions(expression.Arguments, env)
 	return innerEvalCallExpression(function, arguments)
 }
 
-func evalCallExpressionArguments(
-	expression *ast.CallExpression,
+func evalExpressions(
+	expressions []ast.Expression,
 	env *object.Environment,
 ) []object.Object {
 	objs := []object.Object{}
-	for _, argument := range expression.Arguments {
-		obj := evalExpression(argument, env)
+	for _, expression := range expressions {
+		obj := evalExpression(expression, env)
 		objs = append(objs, obj)
 	}
 	return objs
@@ -395,4 +399,59 @@ func unwrap(obj object.Object) object.Object {
 		return rv.Value
 	}
 	return obj
+}
+
+func evalArrayLiteral(
+	expression *ast.ArrayLiteral,
+	env *object.Environment,
+) *object.Array {
+	elements := evalExpressions(expression.Elements, env)
+	return &object.Array{Elements: elements}
+}
+
+func evalIndexExpression(
+	expression *ast.IndexExpression,
+	env *object.Environment,
+) object.Object {
+	left := evalIndexExpressionLeft(expression.Left, env)
+	index := evalIndexExpressionIndex(expression.Index, env)
+	return innerEvalIndexExpression(left, index)
+}
+
+func evalIndexExpressionLeft(
+	expression ast.Expression,
+	env *object.Environment,
+) *object.Array {
+	array := evalExpression(expression, env)
+	a, ok := array.(*object.Array)
+	if !ok {
+		message := `cannot evaluate program; 
+			unexpected left in index expression`
+		log.Fatal(message)
+	}
+	return a
+}
+
+func evalIndexExpressionIndex(
+	expression ast.Expression,
+	env *object.Environment,
+) *object.Integer {
+	index := evalExpression(expression, env)
+	i, ok := index.(*object.Integer)
+	if !ok {
+		message := `cannot evaluate program; 
+			unexpected index in index expression`
+		log.Fatal(message)
+	}
+	return i
+}
+
+func innerEvalIndexExpression(
+	left *object.Array,
+	index *object.Integer,
+) object.Object {
+	if index.Value >= len(left.Elements) || index.Value < 0 {
+		return NULL
+	}
+	return left.Elements[index.Value]
 }

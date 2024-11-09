@@ -1,6 +1,7 @@
 package evaluator
 
 import (
+	"log"
 	"testing"
 
 	"github.com/vincentlabelle/monkey/lexer"
@@ -154,26 +155,30 @@ func Test(t *testing.T) {
 			`,
 			&object.Integer{Value: 4},
 		},
+		{`"Hello World!";`, &object.String{Value: "Hello World!"}},
+		{`"Hello" + " "  + "World!";`, &object.String{Value: "Hello World!"}},
+		{`len("");`, &object.Integer{Value: 0}},
+		{`len("four");`, &object.Integer{Value: 4}},
+		{`len("hello world");`, &object.Integer{Value: 11}},
+		{`len("hello world");`, &object.Integer{Value: 11}},
 		{
-			`"Hello World!"`,
-			&object.String{Value: "Hello World!"},
+			`[1, 2 * 2, 3 + 3];`,
+			&object.Array{Elements: []object.Object{
+				&object.Integer{Value: 1},
+				&object.Integer{Value: 4},
+				&object.Integer{Value: 6},
+			}},
 		},
-		{
-			`"Hello" + " "  + "World!"`,
-			&object.String{Value: "Hello World!"},
-		},
-		{
-			`len("")`,
-			&object.Integer{Value: 0},
-		},
-		{
-			`len("four")`,
-			&object.Integer{Value: 4},
-		},
-		{
-			`len("hello world")`,
-			&object.Integer{Value: 11},
-		},
+		{`[1, 2, 3][0];`, &object.Integer{Value: 1}},
+		{`[1, 2, 3][1];`, &object.Integer{Value: 2}},
+		{`[1, 2, 3][2];`, &object.Integer{Value: 3}},
+		{`let i = 0; [1][i];`, &object.Integer{Value: 1}},
+		{`[1, 2, 3][1 + 1];`, &object.Integer{Value: 3}},
+		{`let a = [1, 2, 3]; a[2];`, &object.Integer{Value: 3}},
+		{`let a = [1, 2, 3]; a[0] + a[1] + a[2];`, &object.Integer{Value: 6}},
+		{`let a = [1, 2, 3]; let i = a[0]; a[i]`, &object.Integer{Value: 2}},
+		{`[1, 2, 3][3];`, &object.Null{}},
+		{`[1, 2, 3][-1];`, &object.Null{}},
 	}
 	for _, s := range setup {
 		lex := lexer.New(s.input)
@@ -217,6 +222,16 @@ func testObject(t *testing.T, actual object.Object, expected object.Object) {
 			)
 		}
 		testString(t, a, e)
+	case *object.Array:
+		a, ok := actual.(*object.Array)
+		if !ok {
+			t.Fatalf(
+				"object type mismatch. got=%T, expected=%T",
+				actual,
+				expected,
+			)
+		}
+		testArray(t, a, e)
 	case *object.Null:
 		_, ok := actual.(*object.Null)
 		if !ok {
@@ -270,5 +285,30 @@ func testString(
 			actual.Value,
 			expected.Value,
 		)
+	}
+}
+
+func testArray(
+	t *testing.T,
+	actual *object.Array,
+	expected *object.Array,
+) {
+	testObjects(t, actual.Elements, expected.Elements)
+}
+
+func testObjects(
+	t *testing.T,
+	actual []object.Object,
+	expected []object.Object,
+) {
+	if len(actual) != len(expected) {
+		log.Fatalf(
+			"number of objects mismatch. got=%v, expected=%v",
+			len(actual),
+			len(expected),
+		)
+	}
+	for i := 0; i < len(actual); i++ {
+		testObject(t, actual[i], expected[i])
 	}
 }
