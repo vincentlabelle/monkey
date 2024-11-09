@@ -320,41 +320,71 @@ func evalCallExpression(
 	expression *ast.CallExpression,
 	env *object.Environment,
 ) object.Object {
-	function := evalCallExpressionFunction(expression, env)
-	inner := newInnerEnvironment(function, expression, env)
-	obj := evalBlockStatements(function.Body, inner)
-	return unwrap(obj)
+	function := evalExpression(expression.Function, env)
+	arguments := evalCallExpressionArguments(expression, env)
+	return innerEvalCallExpression(function, arguments)
 }
 
-func evalCallExpressionFunction(
+func evalCallExpressionArguments(
 	expression *ast.CallExpression,
 	env *object.Environment,
-) *object.Function {
-	obj := evalExpression(expression.Function, env)
-	function, ok := obj.(*object.Function)
-	if !ok {
+) []object.Object {
+	objs := []object.Object{}
+	for _, argument := range expression.Arguments {
+		obj := evalExpression(argument, env)
+		objs = append(objs, obj)
+	}
+	return objs
+}
+
+func innerEvalCallExpression(
+	function object.Object,
+	arguments []object.Object,
+) object.Object {
+	var obj object.Object
+	switch f := function.(type) {
+	case *object.Function:
+		obj = evalCallExpressionFunction(f, arguments)
+	case *object.Builtin:
+		obj = f.Fn(arguments...)
+	default:
 		message := `cannot evaluate program; 
 			unexpected call expression function`
 		log.Fatal(message)
 	}
-	if len(expression.Arguments) != len(function.Parameters) {
-		message := `cannot evaluate program; 
-			missing arguments in call expression`
-		log.Fatal(message)
-	}
-	return function
+	return obj
+}
+
+func evalCallExpressionFunction(
+	function *object.Function,
+	arguments []object.Object,
+) object.Object {
+	inner := newInnerEnvironment(function, arguments)
+	obj := evalBlockStatements(function.Body, inner)
+	return unwrap(obj)
 }
 
 func newInnerEnvironment(
 	function *object.Function,
-	expression *ast.CallExpression,
-	env *object.Environment,
+	arguments []object.Object,
+) *object.Environment {
+	if len(arguments) != len(function.Parameters) {
+		message := `cannot evaluate program; 
+			incorrect number of arguments in call expression`
+		log.Fatal(message)
+	}
+	return innerNewInnerEnvironment(function, arguments)
+}
+
+func innerNewInnerEnvironment(
+	function *object.Function,
+	arguments []object.Object,
 ) *object.Environment {
 	inner := object.NewInnerEnvironment(function.Env)
-	for i := 0; i < len(expression.Arguments); i++ {
+	for i := 0; i < len(arguments); i++ {
 		inner.Set(
 			function.Parameters[i].Value,
-			evalExpression(expression.Arguments[i], env),
+			arguments[i],
 		)
 	}
 	return inner

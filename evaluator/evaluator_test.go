@@ -162,6 +162,18 @@ func Test(t *testing.T) {
 			`"Hello" + " "  + "World!"`,
 			&object.String{Value: "Hello World!"},
 		},
+		{
+			`len("")`,
+			&object.Integer{Value: 0},
+		},
+		{
+			`len("four")`,
+			&object.Integer{Value: 4},
+		},
+		{
+			`len("hello world")`,
+			&object.Integer{Value: 11},
+		},
 	}
 	for _, s := range setup {
 		lex := lexer.New(s.input)

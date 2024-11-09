@@ -50,6 +50,14 @@ func (f *Function) Inspect() string {
 	return "fn(...) {...}"
 }
 
+type Builtin struct {
+	Fn func(...Object) Object
+}
+
+func (b *Builtin) Inspect() string {
+	return "builtin function"
+}
+
 type ReturnValue struct {
 	Value Object
 }

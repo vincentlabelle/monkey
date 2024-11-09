@@ -6,7 +6,15 @@ type Environment struct {
 }
 
 func NewEnvironment() *Environment {
-	return &Environment{store: map[string]Object{}}
+	outer := newBuiltinEnvironment()
+	return &Environment{store: map[string]Object{}, outer: outer}
+}
+
+func newBuiltinEnvironment() *Environment {
+	store := map[string]Object{
+		"len": &Builtin{Fn: len_},
+	}
+	return &Environment{store: store}
 }
 
 func NewInnerEnvironment(outer *Environment) *Environment {

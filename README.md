@@ -12,6 +12,7 @@ The Monkey programming language has the following features:
 - Integers, booleans, and strings
 - Arithmetic operations
 - First-class and higher-order functions
+- Built-in functions
 - Closures
 
 ## Example
