@@ -200,6 +200,7 @@ func Test(t *testing.T) {
 			&object.Integer{Value: 1},
 			&object.Integer{Value: 2},
 		}}},
+		{`puts(1);`, &object.Null{}},
 	}
 	for _, s := range setup {
 		lex := lexer.New(s.input)

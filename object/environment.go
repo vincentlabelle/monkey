@@ -17,6 +17,7 @@ func newBuiltinEnvironment() *Environment {
 		"last":  &Builtin{Fn: last},
 		"rest":  &Builtin{Fn: rest},
 		"push":  &Builtin{Fn: push},
+		"puts":  &Builtin{Fn: puts},
 	}
 	return &Environment{store: store}
 }

@@ -1,6 +1,9 @@
 package object
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 func len_(args ...Object) Object {
 	if len(args) != 1 {
@@ -90,4 +93,11 @@ func innerPush(array *Array, append_ Object) Object {
 	copy(elements, array.Elements)
 	elements[len(elements)-1] = append_
 	return &Array{Elements: elements}
+}
+
+func puts(args ...Object) Object {
+	for _, arg := range args {
+		fmt.Println(arg.Inspect())
+	}
+	return NULL
 }
