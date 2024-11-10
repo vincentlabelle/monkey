@@ -12,7 +12,11 @@ func NewEnvironment() *Environment {
 
 func newBuiltinEnvironment() *Environment {
 	store := map[string]Object{
-		"len": &Builtin{Fn: len_},
+		"len":   &Builtin{Fn: len_},
+		"first": &Builtin{Fn: first},
+		"last":  &Builtin{Fn: last},
+		"rest":  &Builtin{Fn: rest},
+		"push":  &Builtin{Fn: push},
 	}
 	return &Environment{store: store}
 }

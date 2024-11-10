@@ -179,6 +179,27 @@ func Test(t *testing.T) {
 		{`let a = [1, 2, 3]; let i = a[0]; a[i]`, &object.Integer{Value: 2}},
 		{`[1, 2, 3][3];`, &object.Null{}},
 		{`[1, 2, 3][-1];`, &object.Null{}},
+		{`len([]);`, &object.Integer{Value: 0}},
+		{`len([1]);`, &object.Integer{Value: 1}},
+		{`len([1, 2, 3]);`, &object.Integer{Value: 3}},
+		{`first([]);`, &object.Null{}},
+		{`first([1]);`, &object.Integer{Value: 1}},
+		{`first([1, 2, 3]);`, &object.Integer{Value: 1}},
+		{`last([]);`, &object.Null{}},
+		{`last([1]);`, &object.Integer{Value: 1}},
+		{`last([1, 2, 3]);`, &object.Integer{Value: 3}},
+		{`rest([]);`, &object.Null{}},
+		{`rest([1]);`, &object.Array{Elements: []object.Object{}}},
+		{`rest([1, 2]);`, &object.Array{Elements: []object.Object{
+			&object.Integer{Value: 2},
+		}}},
+		{`push([], 1);`, &object.Array{Elements: []object.Object{
+			&object.Integer{Value: 1},
+		}}},
+		{`push([1], 2);`, &object.Array{Elements: []object.Object{
+			&object.Integer{Value: 1},
+			&object.Integer{Value: 2},
+		}}},
 	}
 	for _, s := range setup {
 		lex := lexer.New(s.input)

@@ -8,12 +8,6 @@ import (
 	"github.com/vincentlabelle/monkey/object"
 )
 
-var (
-	TRUE  = &object.Boolean{Value: true}
-	FALSE = &object.Boolean{Value: false}
-	NULL  = &object.Null{}
-)
-
 func Eval(program *ast.Program, env *object.Environment) object.Object {
 	var obj object.Object
 	for _, statement := range program.Statements {
@@ -76,9 +70,9 @@ func nativeToInteger(native int) *object.Integer {
 
 func nativeToBoolean(native bool) *object.Boolean {
 	if native {
-		return TRUE
+		return object.TRUE
 	}
-	return FALSE
+	return object.FALSE
 }
 
 func nativeToString(native string) *object.String {
@@ -139,9 +133,9 @@ func evalBangPrefixExpression(obj object.Object) *object.Boolean {
 	case *object.Boolean:
 		new_ = nativeToBoolean(!o.Value)
 	case *object.Null:
-		new_ = TRUE
+		new_ = object.TRUE
 	default:
-		new_ = FALSE
+		new_ = object.FALSE
 	}
 	return new_
 }
@@ -253,9 +247,9 @@ func evalIfExpressionCondition(
 	case *object.Boolean:
 		return o
 	case *object.Null:
-		return FALSE
+		return object.FALSE
 	default:
-		return TRUE
+		return object.TRUE
 	}
 }
 
@@ -270,7 +264,7 @@ func evalIfExpressionBlock(
 	if expression.Alternative != nil {
 		return evalBlockStatements(expression.Alternative, env)
 	}
-	return NULL
+	return object.NULL
 }
 
 func evalBlockStatements(
@@ -451,7 +445,7 @@ func innerEvalIndexExpression(
 	index *object.Integer,
 ) object.Object {
 	if index.Value >= len(left.Elements) || index.Value < 0 {
-		return NULL
+		return object.NULL
 	}
 	return left.Elements[index.Value]
 }
