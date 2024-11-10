@@ -92,6 +92,13 @@ type ArrayLiteral struct {
 func (al *ArrayLiteral) node()           {}
 func (al *ArrayLiteral) expressionNode() {}
 
+type HashLiteral struct {
+	Pairs map[Expression]Expression
+}
+
+func (hl *HashLiteral) node()           {}
+func (hl *HashLiteral) expressionNode() {}
+
 type PrefixExpression struct {
 	Operator string
 	Right    Expression

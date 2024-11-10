@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/vincentlabelle/monkey/ast"
@@ -868,6 +869,57 @@ func Test(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: `{};`,
+			expected: &ast.Program{
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Expression: &ast.HashLiteral{
+							Pairs: map[ast.Expression]ast.Expression{},
+						},
+					},
+				},
+			},
+		},
+		{
+			input: `{"one": 1};`,
+			expected: &ast.Program{
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Expression: &ast.HashLiteral{
+							Pairs: map[ast.Expression]ast.Expression{
+								&ast.StringLiteral{
+									Value: "one",
+								}: &ast.IntegerLiteral{Value: 1},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			input: `{true: 1 + 2, "one": 3};`,
+			expected: &ast.Program{
+				Statements: []ast.Statement{
+					&ast.ExpressionStatement{
+						Expression: &ast.HashLiteral{
+							Pairs: map[ast.Expression]ast.Expression{
+								&ast.BooleanLiteral{
+									Value: true,
+								}: &ast.InfixExpression{
+									Left:     &ast.IntegerLiteral{Value: 1},
+									Operator: "+",
+									Right:    &ast.IntegerLiteral{Value: 2},
+								},
+								&ast.StringLiteral{
+									Value: "one",
+								}: &ast.IntegerLiteral{Value: 3},
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, s := range setup {
@@ -1060,6 +1112,16 @@ func testExpression(
 			)
 		}
 		testIndexExpression(t, a, e)
+	case *ast.HashLiteral:
+		a, ok := actual.(*ast.HashLiteral)
+		if !ok {
+			t.Fatalf(
+				"expression type mismatch. got=%T, expected=%T",
+				actual,
+				expected,
+			)
+		}
+		testHashLiteral(t, a, e)
 	default:
 		t.Fatal("expression type unknown")
 	}
@@ -1245,6 +1307,26 @@ func testIndexExpression(
 ) {
 	testExpression(t, actual.Left, expected.Left)
 	testExpression(t, actual.Index, expected.Index)
+}
+
+func testHashLiteral(
+	t *testing.T,
+	actual *ast.HashLiteral,
+	expected *ast.HashLiteral,
+) {
+	for ke, ve := range expected.Pairs {
+		found := false
+		for ka, va := range actual.Pairs {
+			if reflect.DeepEqual(ka, ke) {
+				testExpression(t, va, ve)
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatal("hash literal mismatch. missing key(s) in actual")
+		}
+	}
 }
 
 func testReturnStatement(

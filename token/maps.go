@@ -11,6 +11,7 @@ var Unary = map[byte]TokenType{
 	'>': GT,
 	',': COMMA,
 	';': SEMICOLON,
+	':': COLON,
 	'(': LPAREN,
 	')': RPAREN,
 	'{': LBRACE,

@@ -1,7 +1,6 @@
 package evaluator
 
 import (
-	"log"
 	"testing"
 
 	"github.com/vincentlabelle/monkey/lexer"
@@ -201,6 +200,51 @@ func Test(t *testing.T) {
 			&object.Integer{Value: 2},
 		}}},
 		{`puts(1);`, &object.Null{}},
+		{
+			`
+			let two = "two";
+			{
+				"one": 10 - 9,
+				two: 1 + 1,
+				"thr" + "ee": 6 / 2,
+				4: 4,
+				true: 5,
+				false: 6
+			};
+			`, &object.Hash{Pairs: map[object.HashKey]object.HashPair{
+				(&object.String{Value: "one"}).HashKey(): {
+					Key:   &object.String{Value: "one"},
+					Value: &object.Integer{Value: 1},
+				},
+				(&object.String{Value: "two"}).HashKey(): {
+					Key:   &object.String{Value: "two"},
+					Value: &object.Integer{Value: 2},
+				},
+				(&object.String{Value: "three"}).HashKey(): {
+					Key:   &object.String{Value: "three"},
+					Value: &object.Integer{Value: 3},
+				},
+				(&object.Integer{Value: 4}).HashKey(): {
+					Key:   &object.Integer{Value: 4},
+					Value: &object.Integer{Value: 4},
+				},
+				(&object.Boolean{Value: true}).HashKey(): {
+					Key:   &object.Boolean{Value: true},
+					Value: &object.Integer{Value: 5},
+				},
+				(&object.Boolean{Value: false}).HashKey(): {
+					Key:   &object.Boolean{Value: false},
+					Value: &object.Integer{Value: 6},
+				},
+			}},
+		},
+		{`{"foo": 5}["foo"];`, &object.Integer{Value: 5}},
+		{`{"foo": 5}["bar"];`, &object.Null{}},
+		{`let key = "foo"; {"foo": 5}[key];`, &object.Integer{Value: 5}},
+		{`{}["foo"];`, &object.Null{}},
+		{`{5: 5}[5];`, &object.Integer{Value: 5}},
+		{`{true: 5}[true];`, &object.Integer{Value: 5}},
+		{`{false: 5}[false];`, &object.Integer{Value: 5}},
 	}
 	for _, s := range setup {
 		lex := lexer.New(s.input)
@@ -254,6 +298,16 @@ func testObject(t *testing.T, actual object.Object, expected object.Object) {
 			)
 		}
 		testArray(t, a, e)
+	case *object.Hash:
+		a, ok := actual.(*object.Hash)
+		if !ok {
+			t.Fatalf(
+				"object type mismatch. got=%T, expected=%T",
+				actual,
+				expected,
+			)
+		}
+		testHash(t, a, e)
 	case *object.Null:
 		_, ok := actual.(*object.Null)
 		if !ok {
@@ -324,7 +378,7 @@ func testObjects(
 	expected []object.Object,
 ) {
 	if len(actual) != len(expected) {
-		log.Fatalf(
+		t.Fatalf(
 			"number of objects mismatch. got=%v, expected=%v",
 			len(actual),
 			len(expected),
@@ -333,4 +387,27 @@ func testObjects(
 	for i := 0; i < len(actual); i++ {
 		testObject(t, actual[i], expected[i])
 	}
+}
+
+func testHash(
+	t *testing.T,
+	actual *object.Hash,
+	expected *object.Hash,
+) {
+	for ek, ev := range expected.Pairs {
+		av, ok := actual.Pairs[ek]
+		if !ok {
+			t.Fatalf("hash key mismatch. missing %v in actual", ek)
+		}
+		testHashPair(t, av, ev)
+	}
+}
+
+func testHashPair(
+	t *testing.T,
+	actual object.HashPair,
+	expected object.HashPair,
+) {
+	testObject(t, actual.Key, expected.Key)
+	testObject(t, actual.Value, expected.Value)
 }

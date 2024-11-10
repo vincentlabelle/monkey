@@ -57,6 +57,8 @@ func evalExpression(
 		obj = evalArrayLiteral(e, env)
 	case *ast.IndexExpression:
 		obj = evalIndexExpression(e, env)
+	case *ast.HashLiteral:
+		obj = evalHashLiteral(e, env)
 	default:
 		message := "cannot evaluate program; unexpected expression type"
 		log.Fatal(message)
@@ -407,40 +409,43 @@ func evalIndexExpression(
 	expression *ast.IndexExpression,
 	env *object.Environment,
 ) object.Object {
-	left := evalIndexExpressionLeft(expression.Left, env)
-	index := evalIndexExpressionIndex(expression.Index, env)
+	left := evalExpression(expression.Left, env)
+	index := evalExpression(expression.Index, env)
 	return innerEvalIndexExpression(left, index)
 }
 
-func evalIndexExpressionLeft(
-	expression ast.Expression,
-	env *object.Environment,
-) *object.Array {
-	array := evalExpression(expression, env)
-	a, ok := array.(*object.Array)
-	if !ok {
+func innerEvalIndexExpression(
+	left object.Object,
+	index object.Object,
+) object.Object {
+	var obj object.Object
+	switch l := left.(type) {
+	case *object.Array:
+		obj = evalArrayIndexExpression(l, index)
+	case *object.Hash:
+		obj = evalHashIndexExpression(l, index)
+	default:
 		message := `cannot evaluate program; 
 			unexpected left in index expression`
 		log.Fatal(message)
 	}
-	return a
+	return obj
 }
 
-func evalIndexExpressionIndex(
-	expression ast.Expression,
-	env *object.Environment,
-) *object.Integer {
-	index := evalExpression(expression, env)
+func evalArrayIndexExpression(
+	left *object.Array,
+	index object.Object,
+) object.Object {
 	i, ok := index.(*object.Integer)
 	if !ok {
 		message := `cannot evaluate program; 
 			unexpected index in index expression`
 		log.Fatal(message)
 	}
-	return i
+	return innerEvalArrayIndexExpression(left, i)
 }
 
-func innerEvalIndexExpression(
+func innerEvalArrayIndexExpression(
 	left *object.Array,
 	index *object.Integer,
 ) object.Object {
@@ -448,4 +453,54 @@ func innerEvalIndexExpression(
 		return object.NULL
 	}
 	return left.Elements[index.Value]
+}
+
+func evalHashIndexExpression(
+	left *object.Hash,
+	index object.Object,
+) object.Object {
+	i, ok := index.(object.Hashable)
+	if !ok {
+		message := `cannot evaluate program; 
+			unexpected index in index expression`
+		log.Fatal(message)
+	}
+	return innerEvalHashIndexExpression(left, i)
+}
+
+func innerEvalHashIndexExpression(
+	left *object.Hash,
+	index object.Hashable,
+) object.Object {
+	if pair, ok := left.Pairs[index.HashKey()]; ok {
+		return pair.Value
+	}
+	return object.NULL
+}
+
+func evalHashLiteral(
+	expression *ast.HashLiteral,
+	env *object.Environment,
+) *object.Hash {
+	pairs := map[object.HashKey]object.HashPair{}
+	for key, value := range expression.Pairs {
+		k := evalHashLiteralKey(key, env)
+		v := evalExpression(value, env)
+		pairs[k.HashKey()] = object.HashPair{Key: k, Value: v}
+	}
+	return &object.Hash{Pairs: pairs}
+}
+
+func evalHashLiteralKey(
+	expression ast.Expression,
+	env *object.Environment,
+) object.Hashable {
+	key := evalExpression(expression, env)
+	k, ok := key.(object.Hashable)
+	if !ok {
+		message := `cannot evaluate program;
+			key of hash literal must be hashable`
+		log.Fatal(message)
+	}
+	return k
 }

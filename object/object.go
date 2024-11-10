@@ -2,6 +2,7 @@ package object
 
 import (
 	"fmt"
+	"hash/fnv"
 	"strings"
 
 	"github.com/vincentlabelle/monkey/ast"
@@ -19,6 +20,10 @@ func (i *Integer) Inspect() string {
 	return fmt.Sprintf("%v", i.Value)
 }
 
+func (i *Integer) HashKey() HashKey {
+	return HashKey{Type: "Integer", Value: uint64(i.Value)}
+}
+
 type Boolean struct {
 	Value bool
 }
@@ -27,12 +32,26 @@ func (b *Boolean) Inspect() string {
 	return fmt.Sprintf("%v", b.Value)
 }
 
+func (b *Boolean) HashKey() HashKey {
+	var value uint64 = 0
+	if b.Value {
+		value = 1
+	}
+	return HashKey{Type: "Boolean", Value: value}
+}
+
 type String struct {
 	Value string
 }
 
 func (s *String) Inspect() string {
 	return s.Value
+}
+
+func (s *String) HashKey() HashKey {
+	h := fnv.New64a()
+	h.Write([]byte(s.Value))
+	return HashKey{Type: "String", Value: h.Sum64()}
 }
 
 type Array struct {
@@ -45,6 +64,23 @@ func (a *Array) Inspect() string {
 		elements = append(elements, e.Inspect())
 	}
 	return "[" + strings.Join(elements, ", ") + "]"
+}
+
+type Hash struct {
+	Pairs map[HashKey]HashPair
+}
+
+func (h *Hash) Inspect() string {
+	pairs := []string{}
+	for _, pair := range h.Pairs {
+		pairs = append(pairs, pair.Key.Inspect()+": "+pair.Value.Inspect())
+	}
+	return "{" + strings.Join(pairs, ", ") + "}"
+}
+
+type HashPair struct {
+	Key   Object
+	Value Object
 }
 
 type Null struct{}

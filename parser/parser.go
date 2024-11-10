@@ -105,6 +105,8 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 		expression = p.parseFunctionLiteral()
 	} else if p.isCurToken(token.LBRACKET) {
 		expression = p.parseArrayLiteral()
+	} else if p.isCurToken(token.LBRACE) {
+		expression = p.parseHashLiteral()
 	} else {
 		message := "cannot parse program; cannot parse prefix expression for %v"
 		log.Fatalf(message, p.curToken.Type)
@@ -282,6 +284,47 @@ func (p *Parser) innerParseExpressionList(
 		log.Fatalf(message, end)
 	}
 	return expressions
+}
+
+func (p *Parser) parseHashLiteral() *ast.HashLiteral {
+	pairs := p.parseHashPairs()
+	return &ast.HashLiteral{Pairs: pairs}
+}
+
+func (p *Parser) parseHashPairs() map[ast.Expression]ast.Expression {
+	if p.isPeekToken(token.RBRACE) {
+		p.forward()
+		return map[ast.Expression]ast.Expression{}
+	}
+	return p.innerParseHashPairs()
+}
+
+func (p *Parser) innerParseHashPairs() map[ast.Expression]ast.Expression {
+	pairs := map[ast.Expression]ast.Expression{}
+	p.forward()
+	p.parseHashPair(pairs)
+	p.forward()
+	for p.isCurToken(token.COMMA) {
+		p.forward()
+		p.parseHashPair(pairs)
+		p.forward()
+	}
+	if !p.isCurToken(token.RBRACE) {
+		message := "cannot parse program; missing } in hash literal"
+		log.Fatal(message)
+	}
+	return pairs
+}
+
+func (p *Parser) parseHashPair(pairs map[ast.Expression]ast.Expression) {
+	key := p.parseExpression(LOWEST)
+	p.forward()
+	if !p.isCurToken(token.COLON) {
+		message := "cannot parse program; missing : in hash literal"
+		log.Fatal(message)
+	}
+	p.forward()
+	pairs[key] = p.parseExpression(LOWEST)
 }
 
 func (p *Parser) peekPrecedence() int {

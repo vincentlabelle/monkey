@@ -9,7 +9,7 @@ Go._](https://interpreterbook.com/).
 The Monkey programming language has the following features:
 
 - Variable bindings
-- Integers, booleans, strings, and arrays
+- Integers, booleans, strings, arrays, and hash maps
 - Arithmetic operations
 - First-class and higher-order functions
 - Built-in functions
@@ -59,6 +59,10 @@ let accumulate = fn(array, stop) {
 };
 
 puts(accumulate([1, 2, 3], 5));  // [3, 4, 5]
+
+// Hash maps
+let h = {"foo": 1, true: 2, 3: 3};
+puts(h["foo"]); // 1
 ```
 
 ## Installation
