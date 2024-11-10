@@ -20,6 +20,7 @@ The Monkey programming language has the following features:
 Below is an excerpt of the language.
 
 ```text
+// Integers & Booleans
 let ispositive = fn(value) {
     return value > -1;
 };
@@ -31,7 +32,33 @@ let crement = fn(value, side) {
     return value - 1;
 };
 
-crement(0, 1);
+puts(crement(0, 1));  // 1
+
+// Strings
+let greeting = fn(first, last) {
+    let begin = "Hello, ";
+    let end = "!";
+    if (len(last) > 0) {
+        return begin + first + " " + last + end;
+    }
+    return begin + first + end;
+};
+
+puts(greeting("Monkey", ""));  // Hello, Monkey!
+
+// Arrays
+let accumulate = fn(array, stop) {
+    if (len(array) == 0) {
+        return array;
+    }
+    if (last(array) == stop) {
+        return array;
+    }
+    let new = push(rest(array), last(array) + 1);
+    accumulate(new, stop);
+};
+
+puts(accumulate([1, 2, 3], 5));  // [3, 4, 5]
 ```
 
 ## Installation
