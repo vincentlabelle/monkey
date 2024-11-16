@@ -60,8 +60,8 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	name := p.parseIdentifier()
 	p.forward()
 	if !p.isCurToken(token.ASSIGN) {
-		message := `cannot parse program; 
-			identifier in let statement must be followed by assignement`
+		message := "cannot parse program; " +
+			"identifier in let statement must be followed by assignement"
 		log.Fatal(message)
 	}
 	p.forward()
@@ -247,8 +247,8 @@ func (p *Parser) innerParseFunctionParameters() []*ast.Identifier {
 
 func (p *Parser) parseFunctionParameter() *ast.Identifier {
 	if !p.isCurToken(token.IDENT) {
-		message := `cannot parse program; 
-			unexpected token in function parameters`
+		message := "cannot parse program; " +
+			"unexpected token in function parameters"
 		log.Fatal(message)
 	}
 	return p.parseIdentifier()

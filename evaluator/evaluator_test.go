@@ -3,6 +3,7 @@ package evaluator
 import (
 	"testing"
 
+	"github.com/vincentlabelle/monkey/ast"
 	"github.com/vincentlabelle/monkey/lexer"
 	"github.com/vincentlabelle/monkey/object"
 	"github.com/vincentlabelle/monkey/parser"
@@ -28,31 +29,31 @@ func Test(t *testing.T) {
 		{`3 * 3 * 3 + 10;`, &object.Integer{Value: 37}},
 		{`3 * (3 * 3) + 10;`, &object.Integer{Value: 37}},
 		{`(5 + 10 * 2 + 15 / 3) * 2 + -10;`, &object.Integer{Value: 50}},
-		{`true;`, &object.Boolean{Value: true}},
-		{`false;`, &object.Boolean{Value: false}},
-		{`1 < 2;`, &object.Boolean{Value: true}},
-		{`1 > 2;`, &object.Boolean{Value: false}},
-		{`1 < 1;`, &object.Boolean{Value: false}},
-		{`1 > 1;`, &object.Boolean{Value: false}},
-		{`1 == 1;`, &object.Boolean{Value: true}},
-		{`1 != 1;`, &object.Boolean{Value: false}},
-		{`1 == 2;`, &object.Boolean{Value: false}},
-		{`1 != 2;`, &object.Boolean{Value: true}},
-		{`true == true;`, &object.Boolean{Value: true}},
-		{`false == false;`, &object.Boolean{Value: true}},
-		{`true == false;`, &object.Boolean{Value: false}},
-		{`true != false;`, &object.Boolean{Value: true}},
-		{`false != true;`, &object.Boolean{Value: true}},
-		{`(1 < 2) == true;`, &object.Boolean{Value: true}},
-		{`(1 < 2) == false;`, &object.Boolean{Value: false}},
-		{`(1 > 2) == true;`, &object.Boolean{Value: false}},
-		{`(1 > 2) == false;`, &object.Boolean{Value: true}},
-		{`!true;`, &object.Boolean{Value: false}},
-		{`!false;`, &object.Boolean{Value: true}},
-		{`!5;`, &object.Boolean{Value: false}},
-		{`!!true;`, &object.Boolean{Value: true}},
-		{`!!false;`, &object.Boolean{Value: false}},
-		{`!!5;`, &object.Boolean{Value: true}},
+		{`true;`, object.TRUE},
+		{`false;`, object.FALSE},
+		{`1 < 2;`, object.TRUE},
+		{`1 > 2;`, object.FALSE},
+		{`1 < 1;`, object.FALSE},
+		{`1 > 1;`, object.FALSE},
+		{`1 == 1;`, object.TRUE},
+		{`1 != 1;`, object.FALSE},
+		{`1 == 2;`, object.FALSE},
+		{`1 != 2;`, object.TRUE},
+		{`true == true;`, object.TRUE},
+		{`false == false;`, object.TRUE},
+		{`true == false;`, object.FALSE},
+		{`true != false;`, object.TRUE},
+		{`false != true;`, object.TRUE},
+		{`(1 < 2) == true;`, object.TRUE},
+		{`(1 < 2) == false;`, object.FALSE},
+		{`(1 > 2) == true;`, object.FALSE},
+		{`(1 > 2) == false;`, object.TRUE},
+		{`!true;`, object.FALSE},
+		{`!false;`, object.TRUE},
+		{`!5;`, object.FALSE},
+		{`!!true;`, object.TRUE},
+		{`!!false;`, object.FALSE},
+		{`!!5;`, object.TRUE},
 		{`if (true) { 10 };`, &object.Integer{Value: 10}},
 		{`if (false) { 10 };`, &object.Null{}},
 		{`if (1) { 10 };`, &object.Integer{Value: 10}},
@@ -228,12 +229,12 @@ func Test(t *testing.T) {
 					Key:   &object.Integer{Value: 4},
 					Value: &object.Integer{Value: 4},
 				},
-				(&object.Boolean{Value: true}).HashKey(): {
-					Key:   &object.Boolean{Value: true},
+				(object.TRUE).HashKey(): {
+					Key:   object.TRUE,
 					Value: &object.Integer{Value: 5},
 				},
-				(&object.Boolean{Value: false}).HashKey(): {
-					Key:   &object.Boolean{Value: false},
+				(object.FALSE).HashKey(): {
+					Key:   object.FALSE,
 					Value: &object.Integer{Value: 6},
 				},
 			}},
@@ -247,13 +248,21 @@ func Test(t *testing.T) {
 		{`{false: 5}[false];`, &object.Integer{Value: 5}},
 	}
 	for _, s := range setup {
-		lex := lexer.New(s.input)
-		p := parser.New(lex)
-		program := p.ParseProgram()
-		env := object.NewEnvironment()
-		actual := Eval(program, env)
+		actual := eval(s.input)
 		testObject(t, actual, s.expected)
 	}
+}
+
+func eval(input string) object.Object {
+	program := parse(input)
+	env := object.NewEnvironment()
+	return Eval(program, env)
+}
+
+func parse(input string) *ast.Program {
+	lex := lexer.New(input)
+	p := parser.New(lex)
+	return p.ParseProgram()
 }
 
 func testObject(t *testing.T, actual object.Object, expected object.Object) {

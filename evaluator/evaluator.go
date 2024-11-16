@@ -2,7 +2,6 @@ package evaluator
 
 import (
 	"log"
-	"reflect"
 
 	"github.com/vincentlabelle/monkey/ast"
 	"github.com/vincentlabelle/monkey/object"
@@ -36,11 +35,11 @@ func evalExpression(
 	var obj object.Object
 	switch e := expression.(type) {
 	case *ast.IntegerLiteral:
-		obj = nativeToInteger(e.Value)
+		obj = object.NativeToInteger(e.Value)
 	case *ast.BooleanLiteral:
-		obj = nativeToBoolean(e.Value)
+		obj = object.NativeToBoolean(e.Value)
 	case *ast.StringLiteral:
-		obj = nativeToString(e.Value)
+		obj = object.NativeToString(e.Value)
 	case *ast.Identifier:
 		obj = evalIdentifier(e, env)
 	case *ast.PrefixExpression:
@@ -66,21 +65,6 @@ func evalExpression(
 	return obj
 }
 
-func nativeToInteger(native int) *object.Integer {
-	return &object.Integer{Value: native}
-}
-
-func nativeToBoolean(native bool) *object.Boolean {
-	if native {
-		return object.TRUE
-	}
-	return object.FALSE
-}
-
-func nativeToString(native string) *object.String {
-	return &object.String{Value: native}
-}
-
 func evalIdentifier(
 	expression *ast.Identifier,
 	env *object.Environment,
@@ -98,48 +82,7 @@ func evalPrefixExpression(
 	env *object.Environment,
 ) object.Object {
 	right := evalExpression(expression.Right, env)
-	return innerEvalPrefixExpression(expression.Operator, right)
-}
-
-func innerEvalPrefixExpression(
-	operator string,
-	right object.Object,
-) object.Object {
-	var obj object.Object
-	switch operator {
-	case "-":
-		obj = evalMinusPrefixExpression(right)
-	case "!":
-		obj = evalBangPrefixExpression(right)
-	default:
-		message := "cannot evaluate program; unexpected prefix operator"
-		log.Fatal(message)
-	}
-	return obj
-}
-
-func evalMinusPrefixExpression(obj object.Object) *object.Integer {
-	switch o := obj.(type) {
-	case *object.Integer:
-		return nativeToInteger(-o.Value)
-	default:
-		message := "cannot evaluate program; unexpected operand for - prefix"
-		log.Fatal(message)
-	}
-	return nil
-}
-
-func evalBangPrefixExpression(obj object.Object) *object.Boolean {
-	var new_ *object.Boolean
-	switch o := obj.(type) {
-	case *object.Boolean:
-		new_ = nativeToBoolean(!o.Value)
-	case *object.Null:
-		new_ = object.TRUE
-	default:
-		new_ = object.FALSE
-	}
-	return new_
+	return EvalPrefix(expression.Operator, right)
 }
 
 func evalInfixExpression(
@@ -148,88 +91,7 @@ func evalInfixExpression(
 ) object.Object {
 	left := evalExpression(expression.Left, env)
 	right := evalExpression(expression.Right, env)
-	return innerEvalInfixExpression(left, expression.Operator, right)
-}
-
-func innerEvalInfixExpression(
-	left object.Object,
-	operator string,
-	right object.Object,
-) object.Object {
-	var obj object.Object
-	if isPtrToType(left, "Integer") && isPtrToType(right, "Integer") {
-		l, r := left.(*object.Integer), right.(*object.Integer)
-		obj = evalIntegerInfixExpression(l, operator, r)
-	} else if isPtrToType(left, "String") && isPtrToType(right, "String") {
-		l, r := left.(*object.String), right.(*object.String)
-		obj = evalStringInfixExpression(l, operator, r)
-	} else if operator == "==" {
-		obj = nativeToBoolean(left == right)
-	} else if operator == "!=" {
-		obj = nativeToBoolean(left != right)
-	} else if reflect.TypeOf(left) != reflect.TypeOf(right) {
-		message := `cannot parse program; 
-			operands with operator %v aren't of the same type`
-		log.Fatalf(message, operator)
-	} else {
-		message := `cannot parse program; 
-			unexpected operator for infix expression`
-		log.Fatal(message)
-	}
-	return obj
-}
-
-func isPtrToType(obj object.Object, name string) bool {
-	type_ := reflect.TypeOf(obj)
-	return type_.Kind() == reflect.Pointer && type_.Elem().Name() == name
-}
-
-func evalIntegerInfixExpression(
-	left *object.Integer,
-	operator string,
-	right *object.Integer,
-) object.Object {
-	var obj object.Object
-	switch operator {
-	case "+":
-		obj = nativeToInteger(left.Value + right.Value)
-	case "-":
-		obj = nativeToInteger(left.Value - right.Value)
-	case "*":
-		obj = nativeToInteger(left.Value * right.Value)
-	case "/":
-		obj = nativeToInteger(left.Value / right.Value)
-	case "<":
-		obj = nativeToBoolean(left.Value < right.Value)
-	case ">":
-		obj = nativeToBoolean(left.Value > right.Value)
-	case "==":
-		obj = nativeToBoolean(left.Value == right.Value)
-	case "!=":
-		obj = nativeToBoolean(left.Value != right.Value)
-	default:
-		message := `cannot parse program; 
-			unexpected operator for infix expression`
-		log.Fatal(message)
-	}
-	return obj
-}
-
-func evalStringInfixExpression(
-	left *object.String,
-	operator string,
-	right *object.String,
-) *object.String {
-	var obj *object.String
-	switch operator {
-	case "+":
-		obj = nativeToString(left.Value + right.Value)
-	default:
-		message := `cannot parse program; 
-			unexpected operator for infix expression`
-		log.Fatal(message)
-	}
-	return obj
+	return EvalInfix(left, expression.Operator, right)
 }
 
 func evalIfExpression(
@@ -348,8 +210,8 @@ func innerEvalCallExpression(
 	case *object.Builtin:
 		obj = f.Fn(arguments...)
 	default:
-		message := `cannot evaluate program; 
-			unexpected call expression function`
+		message := "cannot evaluate program; " +
+			"unexpected call expression function"
 		log.Fatal(message)
 	}
 	return obj
@@ -369,8 +231,8 @@ func newInnerEnvironment(
 	arguments []object.Object,
 ) *object.Environment {
 	if len(arguments) != len(function.Parameters) {
-		message := `cannot evaluate program; 
-			incorrect number of arguments in call expression`
+		message := "cannot evaluate program; " +
+			"incorrect number of arguments in call expression"
 		log.Fatal(message)
 	}
 	return innerNewInnerEnvironment(function, arguments)
@@ -425,8 +287,8 @@ func innerEvalIndexExpression(
 	case *object.Hash:
 		obj = evalHashIndexExpression(l, index)
 	default:
-		message := `cannot evaluate program; 
-			unexpected left in index expression`
+		message := "cannot evaluate program; " +
+			"unexpected left in index expression"
 		log.Fatal(message)
 	}
 	return obj
@@ -438,8 +300,8 @@ func evalArrayIndexExpression(
 ) object.Object {
 	i, ok := index.(*object.Integer)
 	if !ok {
-		message := `cannot evaluate program; 
-			unexpected index in index expression`
+		message := "cannot evaluate program; " +
+			"unexpected index in index expression"
 		log.Fatal(message)
 	}
 	return innerEvalArrayIndexExpression(left, i)
@@ -461,8 +323,8 @@ func evalHashIndexExpression(
 ) object.Object {
 	i, ok := index.(object.Hashable)
 	if !ok {
-		message := `cannot evaluate program; 
-			unexpected index in index expression`
+		message := "cannot evaluate program; " +
+			"unexpected index in index expression"
 		log.Fatal(message)
 	}
 	return innerEvalHashIndexExpression(left, i)
@@ -498,8 +360,8 @@ func evalHashLiteralKey(
 	key := evalExpression(expression, env)
 	k, ok := key.(object.Hashable)
 	if !ok {
-		message := `cannot evaluate program;
-			key of hash literal must be hashable`
+		message := "cannot evaluate program;" +
+			"key of hash literal must be hashable"
 		log.Fatal(message)
 	}
 	return k
