@@ -12,9 +12,9 @@ import (
 
 func Test(t *testing.T) {
 	setup := []struct {
-		input                string
-		expectedInstructions []code.Instructions
-		expectedConstants    []object.Object
+		input             string
+		expectedPieces    []code.Instructions
+		expectedConstants []object.Object
 	}{
 		{
 			`1 + 2;`,
@@ -189,11 +189,46 @@ func Test(t *testing.T) {
 			},
 			[]object.Object{},
 		},
+		{
+			`if (true) { 10 }; 3333;`,
+			[]code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpJumpIf, 10),
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpJump, 11),
+				code.Make(code.OpNull),
+				code.Make(code.OpPop),
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 10},
+				&object.Integer{Value: 3333},
+			},
+		},
+		{
+			`if (true) { 10 } else { 20 }; 3333;`,
+			[]code.Instructions{
+				code.Make(code.OpTrue),
+				code.Make(code.OpJumpIf, 10),
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpJump, 13),
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpPop),
+				code.Make(code.OpConstant, 2),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 10},
+				&object.Integer{Value: 20},
+				&object.Integer{Value: 3333},
+			},
+		},
 	}
 
 	for _, s := range setup {
 		actual := compile(s.input)
-		expected := combine(s.expectedInstructions, s.expectedConstants)
+		expected := combine(s.expectedPieces, s.expectedConstants)
 		testBytecode(t, actual, expected)
 	}
 }
@@ -201,8 +236,7 @@ func Test(t *testing.T) {
 func compile(input string) *Bytecode {
 	program := parse(input)
 	c := New()
-	c.Compile(program)
-	return c.Bytecode()
+	return c.Compile(program)
 }
 
 func parse(input string) *ast.Program {
@@ -212,11 +246,11 @@ func parse(input string) *ast.Program {
 }
 
 func combine(
-	instructions []code.Instructions,
+	pieces []code.Instructions,
 	constants []object.Object,
 ) *Bytecode {
-	concatenated := code.Concatenate(instructions)
-	return &Bytecode{Instructions: concatenated, Constants: constants}
+	instructions := code.Concatenate(pieces)
+	return &Bytecode{Instructions: instructions, Constants: constants}
 }
 
 func testBytecode(t *testing.T, actual *Bytecode, expected *Bytecode) {

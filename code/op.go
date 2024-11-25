@@ -17,4 +17,7 @@ const (
 	OpTrue
 	OpFalse
 	OpPop
+	OpJump
+	OpJumpIf
+	OpNull
 )

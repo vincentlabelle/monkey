@@ -4,8 +4,8 @@ import "testing"
 
 func TestInstructions(t *testing.T) {
 	setup := []struct {
-		instructions []Instructions
-		expected     string
+		pieces   []Instructions
+		expected string
 	}{
 		{
 			[]Instructions{
@@ -18,7 +18,7 @@ func TestInstructions(t *testing.T) {
 	}
 
 	for _, s := range setup {
-		instructions := Concatenate(s.instructions)
+		instructions := Concatenate(s.pieces)
 		if instructions.String() != s.expected {
 			t.Fatalf(
 				"string mismatch. got=%q, expected=%q",

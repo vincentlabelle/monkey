@@ -21,23 +21,30 @@ func New() *Compiler {
 	}
 }
 
-func (c *Compiler) Compile(program *ast.Program) {
-	for _, statement := range program.Statements {
+func (c *Compiler) Compile(program *ast.Program) *Bytecode {
+	c.compileStatements(program.Statements)
+	return c.code
+}
+
+func (c *Compiler) compileStatements(statements []ast.Statement) int {
+	var pos int
+	for _, statement := range statements {
 		switch s := statement.(type) {
 		case *ast.ExpressionStatement:
-			c.compileExpressionStatement(s)
+			pos = c.compileExpressionStatement(s)
 		default:
 			message := "cannot compile; encountered unexpected statement type"
 			log.Fatal(message)
 		}
 	}
+	return pos
 }
 
 func (c *Compiler) compileExpressionStatement(
 	statement *ast.ExpressionStatement,
-) {
+) int {
 	c.compileExpression(statement.Expression)
-	c.emit(code.OpPop)
+	return c.emit(code.OpPop)
 }
 
 func (c *Compiler) compileExpression(expression ast.Expression) {
@@ -50,6 +57,8 @@ func (c *Compiler) compileExpression(expression ast.Expression) {
 		c.compileInfixExpression(e)
 	case *ast.PrefixExpression:
 		c.compilePrefixExpression(e)
+	case *ast.IfExpression:
+		c.compileIfExpression(e)
 	default:
 		message := "cannot compile; encountered unexpected expression type"
 		log.Fatal(message)
@@ -69,14 +78,14 @@ func (c *Compiler) addConstant(obj object.Object) int {
 }
 
 func (c *Compiler) emit(op code.Opcode, operands ...int) int {
-	ins := code.Make(op, operands...)
-	pos := c.addInstruction(ins)
+	instruction := code.Make(op, operands...)
+	pos := c.addInstruction(instruction)
 	return pos
 }
 
-func (c *Compiler) addInstruction(ins []byte) int {
+func (c *Compiler) addInstruction(instruction []byte) int {
 	pos := len(c.code.Instructions)
-	c.code.Instructions = append(c.code.Instructions, ins...)
+	c.code.Instructions = append(c.code.Instructions, instruction...)
 	return pos
 }
 
@@ -97,7 +106,7 @@ func (c *Compiler) compileInfixExpression(expression *ast.InfixExpression) {
 func (c *Compiler) compileInfixOperator(operator string) {
 	op, ok := code.InfixOperator[operator]
 	if !ok {
-		message := "cannot compile; encountered unexpected operator"
+		message := "cannot compile; encountered unexpected infix operator"
 		log.Fatal(message)
 	}
 	c.emit(op)
@@ -111,12 +120,68 @@ func (c *Compiler) compilePrefixExpression(expression *ast.PrefixExpression) {
 func (c *Compiler) compilePrefixOperator(operator string) {
 	op, ok := code.PrefixOperator[operator]
 	if !ok {
-		message := "cannot compile; encountered unexpected operator"
+		message := "cannot compile; encountered unexpected prefix operator"
 		log.Fatal(message)
 	}
 	c.emit(op)
 }
 
-func (c *Compiler) Bytecode() *Bytecode {
-	return c.code
+func (c *Compiler) compileIfExpression(expression *ast.IfExpression) {
+	jumpIfPos := c.compileIfCondition(expression.Condition)
+	c.compileBlockStatement(expression.Consequence)
+	jumpPos := c.compileIfAlternative(expression, jumpIfPos)
+	c.changeJumpOperand(jumpPos)
+}
+
+func (c *Compiler) compileIfCondition(expression ast.Expression) int {
+	c.compileExpression(expression)
+	return c.emit(code.OpJumpIf, 9999) // 9999 to replace
+}
+
+func (c *Compiler) compileBlockStatement(statement *ast.BlockStatement) {
+	pos := c.compileStatements(statement.Statements)
+	if c.isOpPop(pos) {
+		c.truncateInstructions(pos)
+	}
+}
+
+func (c *Compiler) isOpPop(pos int) bool {
+	return c.atOpcode(pos) == code.OpPop
+}
+
+func (c *Compiler) atOpcode(pos int) code.Opcode {
+	return code.Opcode(c.code.Instructions[pos])
+}
+
+func (c *Compiler) truncateInstructions(pos int) {
+	c.code.Instructions = c.code.Instructions[:pos]
+}
+
+func (c *Compiler) compileIfAlternative(
+	expression *ast.IfExpression,
+	jumpIfPos int,
+) int {
+	jumpPos := c.emit(code.OpJump, 9999) // 9999 to replace
+	c.changeJumpOperand(jumpIfPos)
+	c.innerCompileIfAlternative(expression.Alternative)
+	return jumpPos
+}
+
+func (c *Compiler) innerCompileIfAlternative(statement *ast.BlockStatement) {
+	if statement != nil {
+		c.compileBlockStatement(statement)
+	} else {
+		c.emit(code.OpNull)
+	}
+}
+
+func (c *Compiler) changeJumpOperand(pos int) {
+	op := c.atOpcode(pos)
+	operand := len(c.code.Instructions)
+	instruction := code.Make(op, operand)
+	c.replaceInstruction(pos, instruction)
+}
+
+func (c *Compiler) replaceInstruction(pos int, instruction []byte) {
+	copy(c.code.Instructions[pos:], instruction)
 }

@@ -4,17 +4,17 @@ import "fmt"
 
 type Instructions []byte
 
-func (ins Instructions) String() string {
+func (instructions Instructions) String() string {
 	s, i := "", 0
-	for i < len(ins) {
-		op, operands, width := Unmake(ins[i:])
-		s += castInstruction(i, op, operands)
+	for i < len(instructions) {
+		op, operands, width := Unmake(instructions[i:])
+		s += cast(i, op, operands)
 		i += width
 	}
 	return s
 }
 
-func castInstruction(i int, op Opcode, operands []int) string {
+func cast(i int, op Opcode, operands []int) string {
 	return fmt.Sprintf(
 		"%04d %v%s\n",
 		i,
@@ -31,10 +31,10 @@ func castOperands(operands []int) string {
 	return s
 }
 
-func Concatenate(instructions []Instructions) Instructions {
+func Concatenate(pieces []Instructions) Instructions {
 	concatenated := Instructions{}
-	for _, ins := range instructions {
-		concatenated = append(concatenated, ins...)
+	for _, instructions := range pieces {
+		concatenated = append(concatenated, instructions...)
 	}
 	return concatenated
 }

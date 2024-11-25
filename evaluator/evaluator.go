@@ -107,14 +107,7 @@ func evalIfExpressionCondition(
 	env *object.Environment,
 ) *object.Boolean {
 	obj := evalExpression(expression, env)
-	switch o := obj.(type) {
-	case *object.Boolean:
-		return o
-	case *object.Null:
-		return object.FALSE
-	default:
-		return object.TRUE
-	}
+	return EvalTruthy(obj)
 }
 
 func evalIfExpressionBlock(

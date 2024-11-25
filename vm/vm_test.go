@@ -55,6 +55,20 @@ func Test(t *testing.T) {
 		{`!!true;`, object.TRUE},
 		{`!!false;`, object.FALSE},
 		{`!!5;`, object.TRUE},
+		{`if (true) { 10 };`, &object.Integer{Value: 10}},
+		{`if (true) { 10 } else { 20 };`, &object.Integer{Value: 10}},
+		{`if (false) { 10 } else { 20 };`, &object.Integer{Value: 20}},
+		{`if (1) { 10 };`, &object.Integer{Value: 10}},
+		{`if (1 < 2) { 10 };`, &object.Integer{Value: 10}},
+		{`if (1 < 2) { 10 } else { 20 };`, &object.Integer{Value: 10}},
+		{`if (1 > 2) { 10 } else { 20 };`, &object.Integer{Value: 20}},
+		{`if (1 > 2) { 10 };`, object.NULL},
+		{`if (false) { 10 };`, object.NULL},
+		{`!(if (false) { 5 });`, object.TRUE},
+		{
+			`if (if (false) { 10 }) { 10 } else { 20 };`,
+			&object.Integer{Value: 20},
+		},
 	}
 
 	for _, s := range setup {
@@ -73,8 +87,7 @@ func new_(input string) *VM {
 func compile(input string) *compiler.Bytecode {
 	program := parse(input)
 	c := compiler.New()
-	c.Compile(program)
-	return c.Bytecode()
+	return c.Compile(program)
 }
 
 func parse(input string) *ast.Program {
@@ -109,6 +122,15 @@ func testObject(
 			)
 		}
 		testBooleanObject(t, a, e)
+	case *object.Null:
+		_, ok := actual.(*object.Null)
+		if !ok {
+			t.Fatalf(
+				"object type mismatch. got=%T, expected=%T",
+				actual,
+				expected,
+			)
+		}
 	default:
 		t.Fatal("object type unknown")
 	}

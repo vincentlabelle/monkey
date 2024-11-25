@@ -33,9 +33,33 @@ func (vm *VM) Run() {
 	for ip < len(vm.code.Instructions) {
 		remain := vm.code.Instructions[ip:]
 		op, operands, width := code.Unmake(remain)
-		vm.run(op, operands)
 		ip += width
+		switch op {
+		case code.OpJump:
+			ip = vm.getOperand(operands)
+		case code.OpJumpIf:
+			obj := vm.pop()
+			if !vm.isTruthy(obj) {
+				ip = vm.getOperand(operands)
+			}
+		default:
+			vm.run(op, operands)
+		}
 	}
+}
+
+func (vm *VM) getOperand(operands []int) int {
+	if len(operands) == 0 {
+		message := "cannot run virtual machine; " +
+			"unexpected number of operands encountered"
+		log.Fatal(message)
+	}
+	return operands[0]
+}
+
+func (vm *VM) isTruthy(obj object.Object) bool {
+	b := evaluator.EvalTruthy(obj)
+	return b.Value
 }
 
 func (vm *VM) run(op code.Opcode, operands []int) {
@@ -57,6 +81,8 @@ func (vm *VM) run(op code.Opcode, operands []int) {
 		vm.runOpTrue()
 	case code.OpFalse:
 		vm.runOpFalse()
+	case code.OpNull:
+		vm.runOpNull()
 	case code.OpPop:
 		vm.pop()
 	default:
@@ -67,10 +93,9 @@ func (vm *VM) run(op code.Opcode, operands []int) {
 }
 
 func (vm *VM) runOpConstant(operands []int) {
-	for _, operand := range operands {
-		constant := vm.code.Constants[operand]
-		vm.push(constant)
-	}
+	operand := vm.getOperand(operands)
+	constant := vm.code.Constants[operand]
+	vm.push(constant)
 }
 
 func (vm *VM) push(obj object.Object) {
@@ -127,4 +152,8 @@ func (vm *VM) runOpTrue() {
 
 func (vm *VM) runOpFalse() {
 	vm.push(object.FALSE)
+}
+
+func (vm *VM) runOpNull() {
+	vm.push(object.NULL)
 }

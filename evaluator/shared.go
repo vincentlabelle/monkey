@@ -123,3 +123,14 @@ func evalStringInfix(
 	}
 	return obj
 }
+
+func EvalTruthy(obj object.Object) *object.Boolean {
+	switch o := obj.(type) {
+	case *object.Boolean:
+		return o
+	case *object.Null:
+		return object.FALSE
+	default:
+		return object.TRUE
+	}
+}
