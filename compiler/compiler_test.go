@@ -224,6 +224,45 @@ func Test(t *testing.T) {
 				&object.Integer{Value: 3333},
 			},
 		},
+		{
+			`let one = 1; let two = 2;`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpSetGlobal, 1),
+			},
+			[]object.Object{
+				&object.Integer{Value: 1},
+				&object.Integer{Value: 2},
+			},
+		},
+		{
+			`let one = 1; one;`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 1},
+			},
+		},
+		{
+			`let one = 1; let two = one; two;`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpSetGlobal, 1),
+				code.Make(code.OpGetGlobal, 1),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 1},
+			},
+		},
 	}
 
 	for _, s := range setup {

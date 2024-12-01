@@ -69,6 +69,12 @@ func Test(t *testing.T) {
 			`if (if (false) { 10 }) { 10 } else { 20 };`,
 			&object.Integer{Value: 20},
 		},
+		{`let one = 1; one;`, &object.Integer{Value: 1}},
+		{`let one = 1; let two = 2; one + two;`, &object.Integer{Value: 3}},
+		{
+			`let one = 1; let two = one + one; one + two;`,
+			&object.Integer{Value: 3},
+		},
 	}
 
 	for _, s := range setup {

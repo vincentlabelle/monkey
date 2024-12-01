@@ -6,10 +6,12 @@ import (
 	"github.com/vincentlabelle/monkey/ast"
 	"github.com/vincentlabelle/monkey/code"
 	"github.com/vincentlabelle/monkey/object"
+	"github.com/vincentlabelle/monkey/symbol"
 )
 
 type Compiler struct {
-	code *Bytecode
+	code        *Bytecode
+	symbolTable *symbol.SymbolTable
 }
 
 func New() *Compiler {
@@ -18,6 +20,7 @@ func New() *Compiler {
 			Instructions: code.Instructions{},
 			Constants:    []object.Object{},
 		},
+		symbolTable: symbol.NewTable(),
 	}
 }
 
@@ -32,6 +35,8 @@ func (c *Compiler) compileStatements(statements []ast.Statement) int {
 		switch s := statement.(type) {
 		case *ast.ExpressionStatement:
 			pos = c.compileExpressionStatement(s)
+		case *ast.LetStatement:
+			pos = c.compileLetStatement(s)
 		default:
 			message := "cannot compile; encountered unexpected statement type"
 			log.Fatal(message)
@@ -59,6 +64,8 @@ func (c *Compiler) compileExpression(expression ast.Expression) {
 		c.compilePrefixExpression(e)
 	case *ast.IfExpression:
 		c.compileIfExpression(e)
+	case *ast.Identifier:
+		c.compileIdentifier(e)
 	default:
 		message := "cannot compile; encountered unexpected expression type"
 		log.Fatal(message)
@@ -184,4 +191,24 @@ func (c *Compiler) changeJumpOperand(pos int) {
 
 func (c *Compiler) replaceInstruction(pos int, instruction []byte) {
 	copy(c.code.Instructions[pos:], instruction)
+}
+
+func (c *Compiler) compileIdentifier(expression *ast.Identifier) {
+	sym := c.resolveSymbol(expression)
+	c.emit(code.OpGetGlobal, sym.Index)
+}
+
+func (c *Compiler) resolveSymbol(expression *ast.Identifier) symbol.Symbol {
+	return c.symbolTable.Resolve(expression.Value)
+}
+
+func (c *Compiler) compileLetStatement(statement *ast.LetStatement) int {
+	c.compileExpression(statement.Value)
+	index := c.defineSymbol(statement.Name)
+	return c.emit(code.OpSetGlobal, index)
+}
+
+func (c *Compiler) defineSymbol(expression *ast.Identifier) int {
+	sym := c.symbolTable.Define(expression.Value)
+	return sym.Index
 }

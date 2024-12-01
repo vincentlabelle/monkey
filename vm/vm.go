@@ -9,18 +9,23 @@ import (
 	"github.com/vincentlabelle/monkey/object"
 )
 
-const StackSize = 2048
+const (
+	StackSize   = 2048
+	GlobalsSize = 65536
+)
 
 type VM struct {
-	code  *compiler.Bytecode
-	stack []object.Object
-	sp    int
+	code    *compiler.Bytecode
+	globals []object.Object
+	stack   []object.Object
+	sp      int
 }
 
 func New(code *compiler.Bytecode) *VM {
 	return &VM{
-		code:  code,
-		stack: make([]object.Object, StackSize),
+		code:    code,
+		globals: make([]object.Object, GlobalsSize),
+		stack:   make([]object.Object, StackSize),
 	}
 }
 
@@ -83,6 +88,10 @@ func (vm *VM) run(op code.Opcode, operands []int) {
 		vm.runOpFalse()
 	case code.OpNull:
 		vm.runOpNull()
+	case code.OpSetGlobal:
+		vm.runOpSetGlobal(operands)
+	case code.OpGetGlobal:
+		vm.runOpGetGlobal(operands)
 	case code.OpPop:
 		vm.pop()
 	default:
@@ -156,4 +165,18 @@ func (vm *VM) runOpFalse() {
 
 func (vm *VM) runOpNull() {
 	vm.push(object.NULL)
+}
+
+func (vm *VM) runOpSetGlobal(operands []int) {
+	operand := vm.getOperand(operands)
+	if operand > GlobalsSize {
+		message := "cannot run virtual machine; globals overflow"
+		log.Fatal(message)
+	}
+	vm.globals[operand] = vm.pop()
+}
+
+func (vm *VM) runOpGetGlobal(operands []int) {
+	operand := vm.getOperand(operands)
+	vm.push(vm.globals[operand])
 }

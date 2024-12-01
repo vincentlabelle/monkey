@@ -20,4 +20,6 @@ const (
 	OpJump
 	OpJumpIf
 	OpNull
+	OpGetGlobal
+	OpSetGlobal
 )
