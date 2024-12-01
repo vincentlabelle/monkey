@@ -2,6 +2,7 @@ package vm
 
 import (
 	"log"
+	"slices"
 
 	"github.com/vincentlabelle/monkey/code"
 	"github.com/vincentlabelle/monkey/compiler"
@@ -71,6 +72,16 @@ func (vm *VM) run(op code.Opcode, operands []int) {
 	switch op {
 	case code.OpConstant:
 		vm.runOpConstant(operands)
+	case code.OpTrue:
+		vm.runOpTrue()
+	case code.OpFalse:
+		vm.runOpFalse()
+	case code.OpNull:
+		vm.runOpNull()
+	case code.OpArray:
+		vm.runOpArray(operands)
+	case code.OpHash:
+		vm.runOpHash(operands)
 	case code.OpAdd,
 		code.OpSub,
 		code.OpMul,
@@ -82,12 +93,8 @@ func (vm *VM) run(op code.Opcode, operands []int) {
 		vm.runInfixOperation(op)
 	case code.OpBang, code.OpMinus:
 		vm.runPrefixOperation(op)
-	case code.OpTrue:
-		vm.runOpTrue()
-	case code.OpFalse:
-		vm.runOpFalse()
-	case code.OpNull:
-		vm.runOpNull()
+	case code.OpIndex:
+		vm.runOpIndex()
 	case code.OpSetGlobal:
 		vm.runOpSetGlobal(operands)
 	case code.OpGetGlobal:
@@ -114,6 +121,58 @@ func (vm *VM) push(obj object.Object) {
 	}
 	vm.stack[vm.sp] = obj
 	vm.sp++
+}
+
+func (vm *VM) runOpTrue() {
+	vm.push(object.TRUE)
+}
+
+func (vm *VM) runOpFalse() {
+	vm.push(object.FALSE)
+}
+
+func (vm *VM) runOpNull() {
+	vm.push(object.NULL)
+}
+
+func (vm *VM) runOpArray(operands []int) {
+	operand := vm.getOperand(operands)
+	obj := &object.Array{Elements: vm.popNReverse(operand)}
+	vm.push(obj)
+}
+
+func (vm *VM) popNReverse(n int) []object.Object {
+	objs := vm.popN(n)
+	slices.Reverse(objs)
+	return objs
+}
+
+func (vm *VM) popN(n int) []object.Object {
+	elements := []object.Object{}
+	for i := 0; i < n; i++ {
+		elements = append(elements, vm.pop())
+	}
+	return elements
+}
+
+func (vm *VM) runOpHash(operands []int) {
+	operand := vm.getOperand(operands)
+	obj := vm.innerRunOpHash(operand)
+	vm.push(obj)
+}
+
+func (vm *VM) innerRunOpHash(operand int) *object.Hash {
+	pairs := map[object.HashKey]object.HashPair{}
+	for i := 0; i < operand; i++ {
+		v, k := vm.pop(), vm.popHashable()
+		pairs[k.HashKey()] = object.HashPair{Key: k, Value: v}
+	}
+	return &object.Hash{Pairs: pairs}
+}
+
+func (vm *VM) popHashable() object.Hashable {
+	obj := vm.pop()
+	return object.CastToHashable(obj)
 }
 
 func (vm *VM) runInfixOperation(op code.Opcode) {
@@ -155,16 +214,10 @@ func (vm *VM) getPrefixOperator(op code.Opcode) string {
 	return operator
 }
 
-func (vm *VM) runOpTrue() {
-	vm.push(object.TRUE)
-}
-
-func (vm *VM) runOpFalse() {
-	vm.push(object.FALSE)
-}
-
-func (vm *VM) runOpNull() {
-	vm.push(object.NULL)
+func (vm *VM) runOpIndex() {
+	index, left := vm.pop(), vm.pop()
+	obj := evaluator.EvalIndex(left, index)
+	vm.push(obj)
 }
 
 func (vm *VM) runOpSetGlobal(operands []int) {

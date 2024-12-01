@@ -4,6 +4,11 @@ type Opcode byte
 
 const (
 	OpConstant Opcode = iota
+	OpTrue
+	OpFalse
+	OpNull
+	OpArray
+	OpHash
 	OpAdd
 	OpSub
 	OpMul
@@ -14,12 +19,10 @@ const (
 	OpLowerThan
 	OpMinus
 	OpBang
-	OpTrue
-	OpFalse
+	OpIndex
 	OpPop
 	OpJump
 	OpJumpIf
-	OpNull
-	OpGetGlobal
 	OpSetGlobal
+	OpGetGlobal
 )

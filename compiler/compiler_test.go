@@ -263,6 +263,168 @@ func Test(t *testing.T) {
 				&object.Integer{Value: 1},
 			},
 		},
+		{
+			`"monkey";`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.String{Value: "monkey"},
+			},
+		},
+		{
+			`"mon" + "key";`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpAdd),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.String{Value: "mon"},
+				&object.String{Value: "key"},
+			},
+		},
+		{
+			`[];`,
+			[]code.Instructions{
+				code.Make(code.OpArray, 0),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{},
+		},
+		{
+			`[1, 2, 3];`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpConstant, 2),
+				code.Make(code.OpArray, 3),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 1},
+				&object.Integer{Value: 2},
+				&object.Integer{Value: 3},
+			},
+		},
+		{
+			`[1 + 2, 3 - 4, 5 * 6];`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpAdd),
+				code.Make(code.OpConstant, 2),
+				code.Make(code.OpConstant, 3),
+				code.Make(code.OpSub),
+				code.Make(code.OpConstant, 4),
+				code.Make(code.OpConstant, 5),
+				code.Make(code.OpMul),
+				code.Make(code.OpArray, 3),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 1},
+				&object.Integer{Value: 2},
+				&object.Integer{Value: 3},
+				&object.Integer{Value: 4},
+				&object.Integer{Value: 5},
+				&object.Integer{Value: 6},
+			},
+		},
+		{
+			`{};`,
+			[]code.Instructions{
+				code.Make(code.OpHash, 0),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{},
+		},
+		{
+			`{1: 2, 3: 4, 5: 6};`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpConstant, 2),
+				code.Make(code.OpConstant, 3),
+				code.Make(code.OpConstant, 4),
+				code.Make(code.OpConstant, 5),
+				code.Make(code.OpHash, 3),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 1},
+				&object.Integer{Value: 2},
+				&object.Integer{Value: 3},
+				&object.Integer{Value: 4},
+				&object.Integer{Value: 5},
+				&object.Integer{Value: 6},
+			},
+		},
+		{
+			`{1: 2 + 3, 4: 5 * 6};`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpConstant, 2),
+				code.Make(code.OpAdd),
+				code.Make(code.OpConstant, 3),
+				code.Make(code.OpConstant, 4),
+				code.Make(code.OpConstant, 5),
+				code.Make(code.OpMul),
+				code.Make(code.OpHash, 2),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 1},
+				&object.Integer{Value: 2},
+				&object.Integer{Value: 3},
+				&object.Integer{Value: 4},
+				&object.Integer{Value: 5},
+				&object.Integer{Value: 6},
+			},
+		},
+		{
+			`[1, 2, 3][1 + 1];`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpConstant, 2),
+				code.Make(code.OpArray, 3),
+				code.Make(code.OpConstant, 3),
+				code.Make(code.OpConstant, 4),
+				code.Make(code.OpAdd),
+				code.Make(code.OpIndex),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 1},
+				&object.Integer{Value: 2},
+				&object.Integer{Value: 3},
+				&object.Integer{Value: 1},
+				&object.Integer{Value: 1},
+			},
+		},
+		{
+			`{1: 2}[2 - 1];`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpConstant, 1),
+				code.Make(code.OpHash, 1),
+				code.Make(code.OpConstant, 2),
+				code.Make(code.OpConstant, 3),
+				code.Make(code.OpSub),
+				code.Make(code.OpIndex),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 1},
+				&object.Integer{Value: 2},
+				&object.Integer{Value: 2},
+				&object.Integer{Value: 1},
+			},
+		},
 	}
 
 	for _, s := range setup {
@@ -350,6 +512,16 @@ func testObject(
 			)
 		}
 		testIntegerObject(t, a, e)
+	case *object.String:
+		a, ok := actual.(*object.String)
+		if !ok {
+			t.Fatalf(
+				"object type mismatch. got=%T, expected=%T",
+				actual,
+				expected,
+			)
+		}
+		testStringObject(t, a, e)
 	default:
 		t.Fatal("object type unknown")
 	}
@@ -363,6 +535,20 @@ func testIntegerObject(
 	if actual.Value != expected.Value {
 		t.Fatalf(
 			"integer value mismatch. got=%v, expected=%v",
+			actual.Value,
+			expected.Value,
+		)
+	}
+}
+
+func testStringObject(
+	t *testing.T,
+	actual *object.String,
+	expected *object.String,
+) {
+	if actual.Value != expected.Value {
+		t.Fatalf(
+			"string value mismatch. got=%v, expected=%v",
 			actual.Value,
 			expected.Value,
 		)

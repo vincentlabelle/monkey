@@ -1,7 +1,7 @@
 package parser
 
 import (
-	"reflect"
+	"maps"
 	"testing"
 
 	"github.com/vincentlabelle/monkey/ast"
@@ -875,7 +875,7 @@ func Test(t *testing.T) {
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
 						Expression: &ast.HashLiteral{
-							Pairs: map[ast.Expression]ast.Expression{},
+							Pairs: map[ast.HashKey]ast.Expression{},
 						},
 					},
 				},
@@ -887,9 +887,12 @@ func Test(t *testing.T) {
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
 						Expression: &ast.HashLiteral{
-							Pairs: map[ast.Expression]ast.Expression{
-								&ast.StringLiteral{
-									Value: "one",
+							Pairs: map[ast.HashKey]ast.Expression{
+								{
+									Index: 0,
+									Expression: &ast.StringLiteral{
+										Value: "one",
+									},
 								}: &ast.IntegerLiteral{Value: 1},
 							},
 						},
@@ -903,16 +906,22 @@ func Test(t *testing.T) {
 				Statements: []ast.Statement{
 					&ast.ExpressionStatement{
 						Expression: &ast.HashLiteral{
-							Pairs: map[ast.Expression]ast.Expression{
-								&ast.BooleanLiteral{
-									Value: true,
+							Pairs: map[ast.HashKey]ast.Expression{
+								{
+									Index: 0,
+									Expression: &ast.BooleanLiteral{
+										Value: true,
+									},
 								}: &ast.InfixExpression{
 									Left:     &ast.IntegerLiteral{Value: 1},
 									Operator: "+",
 									Right:    &ast.IntegerLiteral{Value: 2},
 								},
-								&ast.StringLiteral{
-									Value: "one",
+								{
+									Index: 1,
+									Expression: &ast.StringLiteral{
+										Value: "one",
+									},
 								}: &ast.IntegerLiteral{Value: 3},
 							},
 						},
@@ -1314,19 +1323,35 @@ func testHashLiteral(
 	actual *ast.HashLiteral,
 	expected *ast.HashLiteral,
 ) {
-	for ke, ve := range expected.Pairs {
-		found := false
-		for ka, va := range actual.Pairs {
-			if reflect.DeepEqual(ka, ke) {
-				testExpression(t, va, ve)
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Fatal("hash literal mismatch. missing key(s) in actual")
-		}
+	ap, ep := actual.Pairs, expected.Pairs
+	if len(ap) != len(ep) {
+		t.Fatalf(
+			"number of pairs mismatch. got=%v, expected=%v",
+			len(ap),
+			len(ep),
+		)
 	}
+	ak := ast.SortHashKeys(maps.Keys(ap))
+	ek := ast.SortHashKeys(maps.Keys(ep))
+	for i := 0; i < len(ak); i++ {
+		testHashKey(t, ak[i], ek[i])
+		testExpression(t, ap[ak[i]], ep[ek[i]])
+	}
+}
+
+func testHashKey(
+	t *testing.T,
+	actual ast.HashKey,
+	expected ast.HashKey,
+) {
+	if actual.Index != expected.Index {
+		t.Fatalf(
+			"hash key index mismatch. got=%v, expected=%v",
+			actual.Index,
+			expected.Index,
+		)
+	}
+	testExpression(t, actual.Expression, expected.Expression)
 }
 
 func testReturnStatement(

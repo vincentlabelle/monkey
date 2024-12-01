@@ -291,16 +291,16 @@ func (p *Parser) parseHashLiteral() *ast.HashLiteral {
 	return &ast.HashLiteral{Pairs: pairs}
 }
 
-func (p *Parser) parseHashPairs() map[ast.Expression]ast.Expression {
+func (p *Parser) parseHashPairs() map[ast.HashKey]ast.Expression {
 	if p.isPeekToken(token.RBRACE) {
 		p.forward()
-		return map[ast.Expression]ast.Expression{}
+		return map[ast.HashKey]ast.Expression{}
 	}
 	return p.innerParseHashPairs()
 }
 
-func (p *Parser) innerParseHashPairs() map[ast.Expression]ast.Expression {
-	pairs := map[ast.Expression]ast.Expression{}
+func (p *Parser) innerParseHashPairs() map[ast.HashKey]ast.Expression {
+	pairs := map[ast.HashKey]ast.Expression{}
 	p.forward()
 	p.parseHashPair(pairs)
 	p.forward()
@@ -316,8 +316,8 @@ func (p *Parser) innerParseHashPairs() map[ast.Expression]ast.Expression {
 	return pairs
 }
 
-func (p *Parser) parseHashPair(pairs map[ast.Expression]ast.Expression) {
-	key := p.parseExpression(LOWEST)
+func (p *Parser) parseHashPair(pairs map[ast.HashKey]ast.Expression) {
+	key := p.parseHashKey(len(pairs))
 	p.forward()
 	if !p.isCurToken(token.COLON) {
 		message := "cannot parse program; missing : in hash literal"
@@ -325,6 +325,11 @@ func (p *Parser) parseHashPair(pairs map[ast.Expression]ast.Expression) {
 	}
 	p.forward()
 	pairs[key] = p.parseExpression(LOWEST)
+}
+
+func (p *Parser) parseHashKey(index int) ast.HashKey {
+	expression := p.parseExpression(LOWEST)
+	return ast.HashKey{Index: index, Expression: expression}
 }
 
 func (p *Parser) peekPrecedence() int {

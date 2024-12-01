@@ -266,71 +266,7 @@ func evalIndexExpression(
 ) object.Object {
 	left := evalExpression(expression.Left, env)
 	index := evalExpression(expression.Index, env)
-	return innerEvalIndexExpression(left, index)
-}
-
-func innerEvalIndexExpression(
-	left object.Object,
-	index object.Object,
-) object.Object {
-	var obj object.Object
-	switch l := left.(type) {
-	case *object.Array:
-		obj = evalArrayIndexExpression(l, index)
-	case *object.Hash:
-		obj = evalHashIndexExpression(l, index)
-	default:
-		message := "cannot evaluate program; " +
-			"unexpected left in index expression"
-		log.Fatal(message)
-	}
-	return obj
-}
-
-func evalArrayIndexExpression(
-	left *object.Array,
-	index object.Object,
-) object.Object {
-	i, ok := index.(*object.Integer)
-	if !ok {
-		message := "cannot evaluate program; " +
-			"unexpected index in index expression"
-		log.Fatal(message)
-	}
-	return innerEvalArrayIndexExpression(left, i)
-}
-
-func innerEvalArrayIndexExpression(
-	left *object.Array,
-	index *object.Integer,
-) object.Object {
-	if index.Value >= len(left.Elements) || index.Value < 0 {
-		return object.NULL
-	}
-	return left.Elements[index.Value]
-}
-
-func evalHashIndexExpression(
-	left *object.Hash,
-	index object.Object,
-) object.Object {
-	i, ok := index.(object.Hashable)
-	if !ok {
-		message := "cannot evaluate program; " +
-			"unexpected index in index expression"
-		log.Fatal(message)
-	}
-	return innerEvalHashIndexExpression(left, i)
-}
-
-func innerEvalHashIndexExpression(
-	left *object.Hash,
-	index object.Hashable,
-) object.Object {
-	if pair, ok := left.Pairs[index.HashKey()]; ok {
-		return pair.Value
-	}
-	return object.NULL
+	return EvalIndex(left, index)
 }
 
 func evalHashLiteral(
@@ -339,7 +275,7 @@ func evalHashLiteral(
 ) *object.Hash {
 	pairs := map[object.HashKey]object.HashPair{}
 	for key, value := range expression.Pairs {
-		k := evalHashLiteralKey(key, env)
+		k := evalHashLiteralKey(key.Expression, env)
 		v := evalExpression(value, env)
 		pairs[k.HashKey()] = object.HashPair{Key: k, Value: v}
 	}
@@ -351,11 +287,5 @@ func evalHashLiteralKey(
 	env *object.Environment,
 ) object.Hashable {
 	key := evalExpression(expression, env)
-	k, ok := key.(object.Hashable)
-	if !ok {
-		message := "cannot evaluate program;" +
-			"key of hash literal must be hashable"
-		log.Fatal(message)
-	}
-	return k
+	return object.CastToHashable(key)
 }

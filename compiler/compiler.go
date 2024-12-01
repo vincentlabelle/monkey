@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"log"
+	"maps"
 
 	"github.com/vincentlabelle/monkey/ast"
 	"github.com/vincentlabelle/monkey/code"
@@ -58,6 +59,8 @@ func (c *Compiler) compileExpression(expression ast.Expression) {
 		c.compileIntegerLiteral(e)
 	case *ast.BooleanLiteral:
 		c.compileBooleanLiteral(e)
+	case *ast.StringLiteral:
+		c.compileStringLiteral(e)
 	case *ast.InfixExpression:
 		c.compileInfixExpression(e)
 	case *ast.PrefixExpression:
@@ -66,6 +69,12 @@ func (c *Compiler) compileExpression(expression ast.Expression) {
 		c.compileIfExpression(e)
 	case *ast.Identifier:
 		c.compileIdentifier(e)
+	case *ast.ArrayLiteral:
+		c.compileArrayLiteral(e)
+	case *ast.HashLiteral:
+		c.compileHashLiteral(e)
+	case *ast.IndexExpression:
+		c.compileIndexExpression(e)
 	default:
 		message := "cannot compile; encountered unexpected expression type"
 		log.Fatal(message)
@@ -74,6 +83,10 @@ func (c *Compiler) compileExpression(expression ast.Expression) {
 
 func (c *Compiler) compileIntegerLiteral(expression *ast.IntegerLiteral) {
 	obj := object.NativeToInteger(expression.Value)
+	c.compileConstant(obj)
+}
+
+func (c *Compiler) compileConstant(obj object.Object) {
 	pos := c.addConstant(obj)
 	c.emit(code.OpConstant, pos)
 }
@@ -102,6 +115,11 @@ func (c *Compiler) compileBooleanLiteral(expression *ast.BooleanLiteral) {
 	} else {
 		c.emit(code.OpFalse)
 	}
+}
+
+func (c *Compiler) compileStringLiteral(expression *ast.StringLiteral) {
+	obj := object.NativeToString(expression.Value)
+	c.compileConstant(obj)
 }
 
 func (c *Compiler) compileInfixExpression(expression *ast.InfixExpression) {
@@ -200,6 +218,38 @@ func (c *Compiler) compileIdentifier(expression *ast.Identifier) {
 
 func (c *Compiler) resolveSymbol(expression *ast.Identifier) symbol.Symbol {
 	return c.symbolTable.Resolve(expression.Value)
+}
+
+func (c *Compiler) compileArrayLiteral(expression *ast.ArrayLiteral) {
+	c.compileExpressions(expression.Elements)
+	c.emit(code.OpArray, len(expression.Elements))
+}
+
+func (c *Compiler) compileExpressions(expressions []ast.Expression) {
+	for _, expression := range expressions {
+		c.compileExpression(expression)
+	}
+}
+
+func (c *Compiler) compileHashLiteral(expression *ast.HashLiteral) {
+	c.compileHashLiteralPairs(expression.Pairs)
+	c.emit(code.OpHash, len(expression.Pairs))
+}
+
+func (c *Compiler) compileHashLiteralPairs(
+	pairs map[ast.HashKey]ast.Expression,
+) {
+	keys := ast.SortHashKeys(maps.Keys(pairs))
+	for _, key := range keys {
+		c.compileExpression(key.Expression)
+		c.compileExpression(pairs[key])
+	}
+}
+
+func (c *Compiler) compileIndexExpression(expression *ast.IndexExpression) {
+	c.compileExpression(expression.Left)
+	c.compileExpression(expression.Index)
+	c.emit(code.OpIndex)
 }
 
 func (c *Compiler) compileLetStatement(statement *ast.LetStatement) int {

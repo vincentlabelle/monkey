@@ -10,6 +10,11 @@ type Definition struct {
 
 var definitions = map[Opcode]*Definition{
 	OpConstant:    {"OpConstant", OpConstant, []int{2}},
+	OpTrue:        {"OpTrue", OpTrue, []int{}},
+	OpFalse:       {"OpFalse", OpFalse, []int{}},
+	OpNull:        {"OpNull", OpNull, []int{}},
+	OpArray:       {"OpArray", OpArray, []int{2}},
+	OpHash:        {"OpHash", OpHash, []int{2}},
 	OpAdd:         {"OpAdd", OpAdd, []int{}},
 	OpSub:         {"OpSub", OpSub, []int{}},
 	OpMul:         {"OpMul", OpMul, []int{}},
@@ -20,14 +25,12 @@ var definitions = map[Opcode]*Definition{
 	OpLowerThan:   {"OpLowerThan", OpLowerThan, []int{}},
 	OpMinus:       {"OpMinus", OpMinus, []int{}},
 	OpBang:        {"OpBang", OpBang, []int{}},
-	OpTrue:        {"OpTrue", OpTrue, []int{}},
-	OpFalse:       {"OpFalse", OpFalse, []int{}},
+	OpIndex:       {"OpIndex", OpIndex, []int{}},
 	OpPop:         {"OpPop", OpPop, []int{}},
 	OpJump:        {"OpJump", OpJump, []int{2}},
 	OpJumpIf:      {"OpJumpIf", OpJumpIf, []int{2}},
-	OpNull:        {"OpNull", OpNull, []int{}},
-	OpGetGlobal:   {"OpGetGlobal", OpGetGlobal, []int{2}},
 	OpSetGlobal:   {"OpSetGlobal", OpSetGlobal, []int{2}},
+	OpGetGlobal:   {"OpGetGlobal", OpGetGlobal, []int{2}},
 }
 
 func Lookup(op byte) *Definition {

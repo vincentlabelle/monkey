@@ -134,3 +134,67 @@ func EvalTruthy(obj object.Object) *object.Boolean {
 		return object.TRUE
 	}
 }
+
+func EvalIndex(
+	left object.Object,
+	index object.Object,
+) object.Object {
+	var obj object.Object
+	switch l := left.(type) {
+	case *object.Array:
+		obj = evalArrayIndex(l, index)
+	case *object.Hash:
+		obj = evalHashIndex(l, index)
+	default:
+		message := "cannot evaluate program; " +
+			"unexpected left in index expression"
+		log.Fatal(message)
+	}
+	return obj
+}
+
+func evalArrayIndex(
+	left *object.Array,
+	index object.Object,
+) object.Object {
+	i, ok := index.(*object.Integer)
+	if !ok {
+		message := "cannot evaluate program; " +
+			"unexpected index in index expression"
+		log.Fatal(message)
+	}
+	return innerEvalArrayIndex(left, i)
+}
+
+func innerEvalArrayIndex(
+	left *object.Array,
+	index *object.Integer,
+) object.Object {
+	if index.Value >= len(left.Elements) || index.Value < 0 {
+		return object.NULL
+	}
+	return left.Elements[index.Value]
+}
+
+func evalHashIndex(
+	left *object.Hash,
+	index object.Object,
+) object.Object {
+	i, ok := index.(object.Hashable)
+	if !ok {
+		message := "cannot evaluate program; " +
+			"unexpected index in index expression"
+		log.Fatal(message)
+	}
+	return innerEvalHashIndex(left, i)
+}
+
+func innerEvalHashIndex(
+	left *object.Hash,
+	index object.Hashable,
+) object.Object {
+	if pair, ok := left.Pairs[index.HashKey()]; ok {
+		return pair.Value
+	}
+	return object.NULL
+}

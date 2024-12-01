@@ -93,7 +93,7 @@ func (al *ArrayLiteral) node()           {}
 func (al *ArrayLiteral) expressionNode() {}
 
 type HashLiteral struct {
-	Pairs map[Expression]Expression
+	Pairs map[HashKey]Expression
 }
 
 func (hl *HashLiteral) node()           {}
