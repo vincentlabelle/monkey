@@ -31,6 +31,11 @@ var definitions = map[Opcode]*Definition{
 	OpJumpIf:      {"OpJumpIf", OpJumpIf, []int{2}},
 	OpSetGlobal:   {"OpSetGlobal", OpSetGlobal, []int{2}},
 	OpGetGlobal:   {"OpGetGlobal", OpGetGlobal, []int{2}},
+	OpSetLocal:    {"OpSetLocal", OpSetLocal, []int{2}},
+	OpGetLocal:    {"OpGetLocal", OpGetLocal, []int{2}},
+	OpCall:        {"OpCall", OpCall, []int{1}},
+	OpReturnValue: {"OpReturnValue", OpReturnValue, []int{}},
+	OpReturn:      {"OpReturn", OpReturn, []int{}},
 }
 
 func Lookup(op byte) *Definition {

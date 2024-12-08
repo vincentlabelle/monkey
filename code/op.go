@@ -25,4 +25,9 @@ const (
 	OpJumpIf
 	OpSetGlobal
 	OpGetGlobal
+	OpSetLocal
+	OpGetLocal
+	OpCall
+	OpReturnValue
+	OpReturn
 )

@@ -131,13 +131,151 @@ func Test(t *testing.T) {
 		{`[1, 2, 3][1];`, &object.Integer{Value: 2}},
 		{`[1, 2, 3][0 + 2];`, &object.Integer{Value: 3}},
 		{`[[1, 1, 1]][0][0];`, &object.Integer{Value: 1}},
-		{`[][0];`, &object.Null{}},
-		{`[1, 2, 3][99];`, &object.Null{}},
-		{`[1][-1];`, &object.Null{}},
+		{`[][0];`, object.NULL},
+		{`[1, 2, 3][99];`, object.NULL},
+		{`[1][-1];`, object.NULL},
 		{`{1: 1, 2: 2}[1];`, &object.Integer{Value: 1}},
 		{`{1: 1, 2: 2}[2];`, &object.Integer{Value: 2}},
-		{`{1: 1}[0];`, &object.Null{}},
-		{`{}[0];`, &object.Null{}},
+		{`{1: 1}[0];`, object.NULL},
+		{`{}[0];`, object.NULL},
+		{
+			`let fivePlusTen = fn() { 5 + 10; }; fivePlusTen();`,
+			&object.Integer{Value: 15},
+		},
+		{
+			`let one = fn() { 1; }; let two = fn() { 2; }; one() + two();`,
+			&object.Integer{Value: 3},
+		},
+		{
+			`
+			let a = fn() { 1; };
+			let b = fn() { a() + 1; };
+			let c = fn() { b() + 1; };
+			c();
+			`,
+			&object.Integer{Value: 3},
+		},
+		{
+			`let earlyExit = fn() { return 99; 100; }; earlyExit();`,
+			&object.Integer{Value: 99},
+		},
+		{
+			`let earlyExit = fn() { return 99; return 100; }; earlyExit();`,
+			&object.Integer{Value: 99},
+		},
+		{`let noReturn = fn() {}; noReturn();`, object.NULL},
+		{
+			`
+			let noReturn = fn() {};
+			let noReturnTwo = fn() { noReturn(); };
+			noReturn();
+			noReturnTwo();
+			`,
+			object.NULL,
+		},
+		{
+			`
+			let returnsOne = fn() { 1; };
+			let returnsOneReturner = fn() { returnsOne; };
+			returnsOneReturner()();
+			`,
+			&object.Integer{Value: 1},
+		},
+		{
+			`let one = fn() { let one = 1; one; }; one();`,
+			&object.Integer{Value: 1},
+		},
+		{
+			`
+			let oneAndTwo = fn() { let one = 1; let two = 2; one + two; };
+			oneAndTwo();
+			`,
+			&object.Integer{Value: 3},
+		},
+		{
+			`
+			let oneAndTwo = fn() { let one = 1; let two = 2; one + two; };
+			let threeAndFour = fn() {
+				let three = 3;
+				let four = 4;
+				three + four;
+			};
+			oneAndTwo() + threeAndFour();
+			`,
+			&object.Integer{Value: 10},
+		},
+		{
+			`
+			let firstFoobar = fn() { let foobar = 50; foobar; };
+			let secondFoobar = fn() { let foobar = 100; foobar; };
+			firstFoobar() + secondFoobar();
+			`,
+			&object.Integer{Value: 150},
+		},
+		{
+			`
+			let globalSeed = 50;
+			let minusOne = fn() { let num = 1; globalSeed - num; };
+			let minusTwo = fn() { let num = 2; globalSeed - num; };
+			minusOne() + minusTwo();
+			`,
+			&object.Integer{Value: 97},
+		},
+		{
+			`
+			let returnsOneReturner = fn() {
+				let returnsOne = fn() { 1; };
+				returnsOne;
+			};
+			returnsOneReturner()();
+			`,
+			&object.Integer{Value: 1},
+		},
+		{
+			`let identity = fn(a) { a; }; identity(4);`,
+			&object.Integer{Value: 4},
+		},
+		{
+			`let sum = fn(a, b) { a + b; }; sum(1, 2);`,
+			&object.Integer{Value: 3},
+		},
+		{
+			`let sum = fn(a, b) { a + b; }; sum(1, 2);`,
+			&object.Integer{Value: 3},
+		},
+		{
+			`let sum = fn(a, b) { let c = a + b; c; }; sum(1, 2);`,
+			&object.Integer{Value: 3},
+		},
+		{
+			`let sum = fn(a, b) { let c = a + b; c; }; sum(1, 2) + sum(3, 4);`,
+			&object.Integer{Value: 10},
+		},
+		{
+			`
+			let sum = fn(a, b) { let c = a + b; c; };
+			let outer = fn() { sum(1, 2) + sum(3, 4); };
+			outer();
+			`,
+			&object.Integer{Value: 10},
+		},
+		{
+			`
+			let globalNum = 10;
+
+			let sum = fn(a, b) {
+				let c = a + b;
+				c + globalNum;
+			};
+
+			let outer = fn() {
+				sum(1, 2) + sum(3, 4) + globalNum;
+			};
+
+			outer() + globalNum;
+			`,
+			&object.Integer{Value: 50},
+		},
 	}
 
 	for _, s := range setup {

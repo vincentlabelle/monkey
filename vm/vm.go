@@ -11,47 +11,57 @@ import (
 )
 
 const (
-	StackSize   = 2048
 	GlobalsSize = 65536
+	StackSize   = 2048
+	FramesSize  = 1024
 )
 
 type VM struct {
-	code    *compiler.Bytecode
-	globals []object.Object
-	stack   []object.Object
-	sp      int
+	globals     []object.Object
+	stack       []object.Object
+	stackIndex  int
+	frames      []*Frame
+	framesIndex int
+	constants   []object.Object
 }
 
 func New(code *compiler.Bytecode) *VM {
-	return &VM{
-		code:    code,
-		globals: make([]object.Object, GlobalsSize),
-		stack:   make([]object.Object, StackSize),
+	vm := &VM{
+		globals:   make([]object.Object, GlobalsSize),
+		stack:     make([]object.Object, StackSize),
+		frames:    make([]*Frame, FramesSize),
+		constants: code.Constants,
 	}
+	vm.pushInitialFrame(code.Instructions)
+	return vm
+}
+
+func (vm *VM) pushInitialFrame(instructions code.Instructions) {
+	frame := &Frame{
+		Fn: &object.CompiledFunction{
+			Instructions: instructions,
+		},
+	}
+	vm.pushFrame(frame)
 }
 
 func (vm *VM) LastPopped() object.Object {
-	return vm.stack[vm.sp]
+	return vm.stack[vm.stackIndex]
 }
 
 func (vm *VM) Run() {
-	ip := 0
-	for ip < len(vm.code.Instructions) {
-		remain := vm.code.Instructions[ip:]
+	frame := vm.currentFrame()
+	for frame.InsIndex < len(frame.Fn.Instructions) {
+		remain := frame.Fn.Instructions[frame.InsIndex:]
 		op, operands, width := code.Unmake(remain)
-		ip += width
-		switch op {
-		case code.OpJump:
-			ip = vm.getOperand(operands)
-		case code.OpJumpIf:
-			obj := vm.pop()
-			if !vm.isTruthy(obj) {
-				ip = vm.getOperand(operands)
-			}
-		default:
-			vm.run(op, operands)
-		}
+		frame.InsIndex += width // Before run, because of jumps!!
+		vm.run(op, operands)
+		frame = vm.currentFrame()
 	}
+}
+
+func (vm *VM) currentFrame() *Frame {
+	return vm.frames[vm.framesIndex-1]
 }
 
 func (vm *VM) getOperand(operands []int) int {
@@ -99,6 +109,20 @@ func (vm *VM) run(op code.Opcode, operands []int) {
 		vm.runOpSetGlobal(operands)
 	case code.OpGetGlobal:
 		vm.runOpGetGlobal(operands)
+	case code.OpSetLocal:
+		vm.runOpSetLocal(operands)
+	case code.OpGetLocal:
+		vm.runOpGetLocal(operands)
+	case code.OpCall:
+		vm.runOpCall(operands)
+	case code.OpReturnValue:
+		vm.runOpReturnValue()
+	case code.OpReturn:
+		vm.runOpReturn()
+	case code.OpJump:
+		vm.runOpJump(operands)
+	case code.OpJumpIf:
+		vm.runOpJumpIf(operands)
 	case code.OpPop:
 		vm.pop()
 	default:
@@ -110,17 +134,17 @@ func (vm *VM) run(op code.Opcode, operands []int) {
 
 func (vm *VM) runOpConstant(operands []int) {
 	operand := vm.getOperand(operands)
-	constant := vm.code.Constants[operand]
+	constant := vm.constants[operand]
 	vm.push(constant)
 }
 
 func (vm *VM) push(obj object.Object) {
-	if vm.sp >= StackSize {
+	if vm.stackIndex >= StackSize {
 		message := "cannot run virtual machine; stack overflow"
 		log.Fatal(message)
 	}
-	vm.stack[vm.sp] = obj
-	vm.sp++
+	vm.stack[vm.stackIndex] = obj
+	vm.stackIndex++
 }
 
 func (vm *VM) runOpTrue() {
@@ -183,7 +207,7 @@ func (vm *VM) runInfixOperation(op code.Opcode) {
 }
 
 func (vm *VM) pop() object.Object {
-	vm.sp--
+	vm.stackIndex--
 	return vm.LastPopped()
 }
 
@@ -232,4 +256,96 @@ func (vm *VM) runOpSetGlobal(operands []int) {
 func (vm *VM) runOpGetGlobal(operands []int) {
 	operand := vm.getOperand(operands)
 	vm.push(vm.globals[operand])
+}
+
+func (vm *VM) runOpSetLocal(operands []int) {
+	operand := vm.getOperand(operands)
+	obj := vm.pop()
+	vm.setLocal(obj, operand)
+}
+
+func (vm *VM) setLocal(obj object.Object, operand int) {
+	frame := vm.currentFrame()
+	vm.stack[frame.BaseStackIndex+operand] = obj
+}
+
+func (vm *VM) runOpGetLocal(operands []int) {
+	operand := vm.getOperand(operands)
+	obj := vm.getLocal(operand)
+	vm.push(obj)
+}
+
+func (vm *VM) getLocal(operand int) object.Object {
+	frame := vm.currentFrame()
+	return vm.stack[frame.BaseStackIndex+operand]
+}
+
+func (vm *VM) runOpCall(operands []int) {
+	operand := vm.getOperand(operands)
+	fn := vm.getFunction(operand)
+	vm.validateArguments(fn, operand)
+	frame := &Frame{Fn: fn, BaseStackIndex: vm.stackIndex - operand}
+	vm.pushFrame(frame)
+}
+
+func (vm *VM) getFunction(operand int) *object.CompiledFunction {
+	obj := vm.innerGetFunction(operand)
+	return vm.castFunction(obj)
+}
+
+func (vm *VM) innerGetFunction(operand int) object.Object {
+	return vm.stack[vm.stackIndex-operand-1]
+}
+
+func (vm *VM) castFunction(obj object.Object) *object.CompiledFunction {
+	fn, ok := obj.(*object.CompiledFunction)
+	if !ok {
+		message := "cannot run virtual machine; " +
+			"unexpected Opcode encountered has function in function call"
+		log.Fatal(message)
+	}
+	return fn
+}
+
+func (vm *VM) validateArguments(fn *object.CompiledFunction, operand int) {
+	if fn.NumParameters != operand {
+		message := "cannot run virtual machine; " +
+			"unexpected number of arguments in call to function"
+		log.Fatal(message)
+	}
+}
+
+func (vm *VM) pushFrame(frame *Frame) {
+	vm.frames[vm.framesIndex] = frame
+	vm.framesIndex++
+	vm.stackIndex += frame.Fn.NumLocals
+}
+
+func (vm *VM) runOpReturnValue() {
+	obj := vm.pop()
+	vm.popFrame()
+	vm.push(obj)
+}
+
+func (vm *VM) popFrame() {
+	frame := vm.currentFrame()
+	vm.stackIndex = frame.BaseStackIndex - 1
+	vm.framesIndex--
+}
+
+func (vm *VM) runOpReturn() {
+	vm.popFrame()
+	vm.push(object.NULL)
+}
+
+func (vm *VM) runOpJump(operands []int) {
+	frame := vm.currentFrame()
+	frame.InsIndex = vm.getOperand(operands)
+}
+
+func (vm *VM) runOpJumpIf(operands []int) {
+	obj := vm.pop()
+	if !vm.isTruthy(obj) {
+		vm.runOpJump(operands)
+	}
 }

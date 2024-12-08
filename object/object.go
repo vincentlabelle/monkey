@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/vincentlabelle/monkey/ast"
+	"github.com/vincentlabelle/monkey/code"
 )
 
 type Object interface {
@@ -96,6 +97,16 @@ type Function struct {
 }
 
 func (f *Function) Inspect() string {
+	return "fn(...) {...}"
+}
+
+type CompiledFunction struct {
+	Instructions  code.Instructions
+	NumLocals     int
+	NumParameters int
+}
+
+func (cf *CompiledFunction) Inspect() string {
 	return "fn(...) {...}"
 }
 

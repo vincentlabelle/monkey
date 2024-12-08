@@ -11,23 +11,38 @@ import (
 )
 
 type Compiler struct {
-	code        *Bytecode
+	scopes      []code.Instructions
+	scopeIndex  int
+	constants   []object.Object
 	symbolTable *symbol.SymbolTable
 }
 
 func New() *Compiler {
 	return &Compiler{
-		code: &Bytecode{
-			Instructions: code.Instructions{},
-			Constants:    []object.Object{},
-		},
+		scopes:      []code.Instructions{{}},
+		constants:   []object.Object{},
 		symbolTable: symbol.NewTable(),
 	}
 }
 
 func (c *Compiler) Compile(program *ast.Program) *Bytecode {
 	c.compileStatements(program.Statements)
-	return c.code
+	instructions := c.currentInstructions()
+	return &Bytecode{Instructions: instructions, Constants: c.constants}
+}
+
+func (c *Compiler) enterScope() {
+	c.innerEnterScope()
+	c.enterSymbolTable()
+}
+
+func (c *Compiler) innerEnterScope() {
+	c.scopes = append(c.scopes, code.Instructions{})
+	c.scopeIndex++
+}
+
+func (c *Compiler) enterSymbolTable() {
+	c.symbolTable = symbol.NewInnerTable(c.symbolTable)
 }
 
 func (c *Compiler) compileStatements(statements []ast.Statement) int {
@@ -38,6 +53,8 @@ func (c *Compiler) compileStatements(statements []ast.Statement) int {
 			pos = c.compileExpressionStatement(s)
 		case *ast.LetStatement:
 			pos = c.compileLetStatement(s)
+		case *ast.ReturnStatement:
+			pos = c.compileReturnStatement(s)
 		default:
 			message := "cannot compile; encountered unexpected statement type"
 			log.Fatal(message)
@@ -75,6 +92,10 @@ func (c *Compiler) compileExpression(expression ast.Expression) {
 		c.compileHashLiteral(e)
 	case *ast.IndexExpression:
 		c.compileIndexExpression(e)
+	case *ast.FunctionLiteral:
+		c.compileFunctionLiteral(e)
+	case *ast.CallExpression:
+		c.compileCallExpression(e)
 	default:
 		message := "cannot compile; encountered unexpected expression type"
 		log.Fatal(message)
@@ -92,8 +113,8 @@ func (c *Compiler) compileConstant(obj object.Object) {
 }
 
 func (c *Compiler) addConstant(obj object.Object) int {
-	pos := len(c.code.Constants)
-	c.code.Constants = append(c.code.Constants, obj)
+	pos := len(c.constants)
+	c.constants = append(c.constants, obj)
 	return pos
 }
 
@@ -104,9 +125,19 @@ func (c *Compiler) emit(op code.Opcode, operands ...int) int {
 }
 
 func (c *Compiler) addInstruction(instruction []byte) int {
-	pos := len(c.code.Instructions)
-	c.code.Instructions = append(c.code.Instructions, instruction...)
+	instructions := c.currentInstructions()
+	pos := len(instructions)
+	instructions = append(instructions, instruction...)
+	c.updateCurrentInstructions(instructions)
 	return pos
+}
+
+func (c *Compiler) currentInstructions() code.Instructions {
+	return c.scopes[c.scopeIndex]
+}
+
+func (c *Compiler) updateCurrentInstructions(instructions code.Instructions) {
+	c.scopes[c.scopeIndex] = instructions
 }
 
 func (c *Compiler) compileBooleanLiteral(expression *ast.BooleanLiteral) {
@@ -163,11 +194,13 @@ func (c *Compiler) compileIfCondition(expression ast.Expression) int {
 	return c.emit(code.OpJumpIf, 9999) // 9999 to replace
 }
 
-func (c *Compiler) compileBlockStatement(statement *ast.BlockStatement) {
+func (c *Compiler) compileBlockStatement(statement *ast.BlockStatement) bool {
 	pos := c.compileStatements(statement.Statements)
 	if c.isOpPop(pos) {
 		c.truncateInstructions(pos)
+		return true
 	}
+	return false
 }
 
 func (c *Compiler) isOpPop(pos int) bool {
@@ -175,11 +208,13 @@ func (c *Compiler) isOpPop(pos int) bool {
 }
 
 func (c *Compiler) atOpcode(pos int) code.Opcode {
-	return code.Opcode(c.code.Instructions[pos])
+	instructions := c.currentInstructions()
+	return code.Opcode(instructions[pos])
 }
 
 func (c *Compiler) truncateInstructions(pos int) {
-	c.code.Instructions = c.code.Instructions[:pos]
+	instructions := c.currentInstructions()
+	c.updateCurrentInstructions(instructions[:pos])
 }
 
 func (c *Compiler) compileIfAlternative(
@@ -202,22 +237,36 @@ func (c *Compiler) innerCompileIfAlternative(statement *ast.BlockStatement) {
 
 func (c *Compiler) changeJumpOperand(pos int) {
 	op := c.atOpcode(pos)
-	operand := len(c.code.Instructions)
+	operand := len(c.currentInstructions())
 	instruction := code.Make(op, operand)
 	c.replaceInstruction(pos, instruction)
 }
 
 func (c *Compiler) replaceInstruction(pos int, instruction []byte) {
-	copy(c.code.Instructions[pos:], instruction)
+	instructions := c.currentInstructions()
+	copy(instructions[pos:], instruction)
 }
 
 func (c *Compiler) compileIdentifier(expression *ast.Identifier) {
 	sym := c.resolveSymbol(expression)
-	c.emit(code.OpGetGlobal, sym.Index)
+	op := c.getOpGet(sym)
+	c.emit(op, sym.Index)
 }
 
 func (c *Compiler) resolveSymbol(expression *ast.Identifier) symbol.Symbol {
-	return c.symbolTable.Resolve(expression.Value)
+	sym, ok := c.symbolTable.Resolve(expression.Value)
+	if !ok {
+		message := "cannot compile; encountered symbol which cannot be resolved"
+		log.Fatal(message)
+	}
+	return sym
+}
+
+func (c *Compiler) getOpGet(sym symbol.Symbol) code.Opcode {
+	if sym.Scope == symbol.GlobalScope {
+		return code.OpGetGlobal
+	}
+	return code.OpGetLocal
 }
 
 func (c *Compiler) compileArrayLiteral(expression *ast.ArrayLiteral) {
@@ -252,13 +301,92 @@ func (c *Compiler) compileIndexExpression(expression *ast.IndexExpression) {
 	c.emit(code.OpIndex)
 }
 
-func (c *Compiler) compileLetStatement(statement *ast.LetStatement) int {
-	c.compileExpression(statement.Value)
-	index := c.defineSymbol(statement.Name)
-	return c.emit(code.OpSetGlobal, index)
+func (c *Compiler) compileFunctionLiteral(expression *ast.FunctionLiteral) {
+	instructions, count := c.innerCompileFunctionLiteral(expression)
+	obj := &object.CompiledFunction{
+		Instructions:  instructions,
+		NumLocals:     count,
+		NumParameters: len(expression.Parameters),
+	}
+	c.compileConstant(obj)
 }
 
-func (c *Compiler) defineSymbol(expression *ast.Identifier) int {
-	sym := c.symbolTable.Define(expression.Value)
-	return sym.Index
+func (c *Compiler) innerCompileFunctionLiteral(
+	expression *ast.FunctionLiteral,
+) (code.Instructions, int) {
+	c.enterScope()
+	c.compileFunctionParameters(expression.Parameters)
+	c.compileFunctionBody(expression.Body)
+	return c.leaveScope()
+}
+
+func (c *Compiler) compileFunctionParameters(expressions []*ast.Identifier) {
+	for _, expression := range expressions {
+		c.defineSymbol(expression)
+	}
+}
+
+func (c *Compiler) compileFunctionBody(
+	statement *ast.BlockStatement,
+) {
+	if len(statement.Statements) == 0 {
+		c.emit(code.OpReturn)
+	} else {
+		c.compileNonEmptyFunctionBody(statement)
+	}
+}
+
+func (c *Compiler) compileNonEmptyFunctionBody(statement *ast.BlockStatement) {
+	truncated := c.compileBlockStatement(statement)
+	if truncated {
+		c.emit(code.OpReturnValue)
+	}
+}
+
+func (c *Compiler) leaveScope() (code.Instructions, int) {
+	instructions := c.innerLeaveScope()
+	count := c.leaveSymbolTable()
+	return instructions, count
+}
+
+func (c *Compiler) innerLeaveScope() code.Instructions {
+	instructions := c.currentInstructions()
+	c.scopes = c.scopes[:c.scopeIndex]
+	c.scopeIndex--
+	return instructions
+}
+
+func (c *Compiler) leaveSymbolTable() int {
+	count := c.symbolTable.CountDefinitions()
+	c.symbolTable = c.symbolTable.Outer()
+	return count
+}
+
+func (c *Compiler) compileCallExpression(expression *ast.CallExpression) {
+	c.compileExpression(expression.Function)
+	c.compileExpressions(expression.Arguments)
+	c.emit(code.OpCall, len(expression.Arguments))
+}
+
+func (c *Compiler) compileLetStatement(statement *ast.LetStatement) int {
+	c.compileExpression(statement.Value)
+	sym := c.defineSymbol(statement.Name)
+	op := c.getOpSet(sym)
+	return c.emit(op, sym.Index)
+}
+
+func (c *Compiler) defineSymbol(expression *ast.Identifier) symbol.Symbol {
+	return c.symbolTable.Define(expression.Value)
+}
+
+func (c *Compiler) getOpSet(sym symbol.Symbol) code.Opcode {
+	if sym.Scope == symbol.GlobalScope {
+		return code.OpSetGlobal
+	}
+	return code.OpSetLocal
+}
+
+func (c *Compiler) compileReturnStatement(statement *ast.ReturnStatement) int {
+	c.compileExpression(statement.Value)
+	return c.emit(code.OpReturnValue)
 }

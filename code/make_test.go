@@ -18,6 +18,11 @@ func TestMake(t *testing.T) {
 			[]int{},
 			[]byte{byte(OpAdd)},
 		},
+		{
+			OpCall,
+			[]int{255},
+			[]byte{byte(OpCall), 255},
+		},
 	}
 
 	for _, s := range setup {

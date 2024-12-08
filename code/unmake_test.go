@@ -10,6 +10,7 @@ func TestUnmake(t *testing.T) {
 	}{
 		{OpConstant, []int{65535}, 3},
 		{OpAdd, []int{}, 1},
+		{OpCall, []int{255}, 2},
 	}
 
 	for _, s := range setup {

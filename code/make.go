@@ -51,6 +51,8 @@ func innerAddOperands(
 				remain,
 				uint16(operands[i]),
 			)
+		case 1:
+			remain[0] = byte(operands[i])
 		default:
 			message := "cannot make instruction; unexpected operand width"
 			log.Fatal(message)

@@ -35,6 +35,8 @@ func readOperands(def *Definition, instruction []byte) []int {
 		switch width {
 		case 2:
 			operands[i] = int(binary.BigEndian.Uint16(remain))
+		case 1:
+			operands[i] = int(uint8(remain[0]))
 		default:
 			message := "cannot unmake instruction; unexpected operand width"
 			log.Fatal(message)
