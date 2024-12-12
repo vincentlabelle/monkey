@@ -113,6 +113,8 @@ func (vm *VM) run(op code.Opcode, operands []int) {
 		vm.runOpSetLocal(operands)
 	case code.OpGetLocal:
 		vm.runOpGetLocal(operands)
+	case code.OpGetBuiltin:
+		vm.runOpGetBuiltin(operands)
 	case code.OpCall:
 		vm.runOpCall(operands)
 	case code.OpReturnValue:
@@ -280,31 +282,39 @@ func (vm *VM) getLocal(operand int) object.Object {
 	return vm.stack[frame.BaseStackIndex+operand]
 }
 
+func (vm *VM) runOpGetBuiltin(operands []int) {
+	operand := vm.getOperand(operands)
+	b := object.Builtins[operand]
+	vm.push(b.Builtin)
+}
+
 func (vm *VM) runOpCall(operands []int) {
 	operand := vm.getOperand(operands)
 	fn := vm.getFunction(operand)
-	vm.validateArguments(fn, operand)
-	frame := &Frame{Fn: fn, BaseStackIndex: vm.stackIndex - operand}
-	vm.pushFrame(frame)
+	vm.dispatchCall(fn, operand)
 }
 
-func (vm *VM) getFunction(operand int) *object.CompiledFunction {
-	obj := vm.innerGetFunction(operand)
-	return vm.castFunction(obj)
-}
-
-func (vm *VM) innerGetFunction(operand int) object.Object {
+func (vm *VM) getFunction(operand int) object.Object {
 	return vm.stack[vm.stackIndex-operand-1]
 }
 
-func (vm *VM) castFunction(obj object.Object) *object.CompiledFunction {
-	fn, ok := obj.(*object.CompiledFunction)
-	if !ok {
+func (vm *VM) dispatchCall(fn object.Object, operand int) {
+	switch f := fn.(type) {
+	case *object.CompiledFunction:
+		vm.runCompiledFunction(f, operand)
+	case *object.Builtin:
+		vm.runBuiltinFunction(f, operand)
+	default:
 		message := "cannot run virtual machine; " +
-			"unexpected Opcode encountered has function in function call"
+			"unexpected object encountered has function in function call"
 		log.Fatal(message)
 	}
-	return fn
+}
+
+func (vm *VM) runCompiledFunction(fn *object.CompiledFunction, operand int) {
+	vm.validateArguments(fn, operand)
+	frame := &Frame{Fn: fn, BaseStackIndex: vm.stackIndex - operand}
+	vm.pushFrame(frame)
 }
 
 func (vm *VM) validateArguments(fn *object.CompiledFunction, operand int) {
@@ -319,6 +329,22 @@ func (vm *VM) pushFrame(frame *Frame) {
 	vm.frames[vm.framesIndex] = frame
 	vm.framesIndex++
 	vm.stackIndex += frame.Fn.NumLocals
+}
+
+func (vm *VM) runBuiltinFunction(fn *object.Builtin, operand int) {
+	arguments := vm.getBuiltinArguments(operand)
+	vm.pop() // Pop builtin!
+	obj := fn.Fn(arguments...)
+	vm.push(obj)
+}
+
+func (vm *VM) getBuiltinArguments(operand int) []object.Object {
+	arguments := []object.Object{}
+	for i := 0; i < operand; i++ {
+		arguments = append(arguments, vm.pop())
+	}
+	slices.Reverse(arguments)
+	return arguments
 }
 
 func (vm *VM) runOpReturnValue() {

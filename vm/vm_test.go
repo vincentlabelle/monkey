@@ -276,6 +276,32 @@ func Test(t *testing.T) {
 			`,
 			&object.Integer{Value: 50},
 		},
+		{`len("")`, &object.Integer{Value: 0}},
+		{`len("four")`, &object.Integer{Value: 4}},
+		{`len("hello world")`, &object.Integer{Value: 11}},
+		{`len([1, 2, 3])`, &object.Integer{Value: 3}},
+		{`len([])`, &object.Integer{Value: 0}},
+		{`puts("hello", "world!")`, object.NULL},
+		{`first([1, 2, 3])`, &object.Integer{Value: 1}},
+		{`first([])`, object.NULL},
+		{`last([1, 2, 3])`, &object.Integer{Value: 3}},
+		{`last([])`, object.NULL},
+		{
+			`rest([1, 2, 3])`,
+			&object.Array{
+				Elements: []object.Object{
+					&object.Integer{Value: 2},
+					&object.Integer{Value: 3},
+				}},
+		},
+		{`rest([])`, object.NULL},
+		{
+			`push([], 1)`,
+			&object.Array{
+				Elements: []object.Object{
+					&object.Integer{Value: 1},
+				}},
+		},
 	}
 
 	for _, s := range setup {

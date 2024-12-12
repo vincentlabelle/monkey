@@ -263,6 +263,9 @@ func (c *Compiler) resolveSymbol(expression *ast.Identifier) symbol.Symbol {
 }
 
 func (c *Compiler) getOpGet(sym symbol.Symbol) code.Opcode {
+	if sym.Scope == symbol.BuiltinScope {
+		return code.OpGetBuiltin
+	}
 	if sym.Scope == symbol.GlobalScope {
 		return code.OpGetGlobal
 	}

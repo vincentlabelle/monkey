@@ -27,6 +27,7 @@ const (
 	OpGetGlobal
 	OpSetLocal
 	OpGetLocal
+	OpGetBuiltin
 	OpCall
 	OpReturnValue
 	OpReturn

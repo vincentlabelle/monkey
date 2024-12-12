@@ -1,5 +1,7 @@
 package symbol
 
+import "github.com/vincentlabelle/monkey/object"
+
 type SymbolTable struct {
 	store map[string]Symbol
 	outer *SymbolTable
@@ -8,7 +10,16 @@ type SymbolTable struct {
 func NewTable() *SymbolTable {
 	return &SymbolTable{
 		store: map[string]Symbol{},
+		outer: newBuiltinTable(),
 	}
+}
+
+func newBuiltinTable() *SymbolTable {
+	store := map[string]Symbol{}
+	for i, b := range object.Builtins {
+		store[b.Name] = Symbol{b.Name, BuiltinScope, i}
+	}
+	return &SymbolTable{store: store}
 }
 
 func NewInnerTable(outer *SymbolTable) *SymbolTable {
@@ -28,10 +39,13 @@ func (s *SymbolTable) Define(name string) Symbol {
 }
 
 func (s *SymbolTable) getScope() SymbolScope {
-	if s.outer != nil {
-		return LocalScope
+	if s.outer == nil {
+		return BuiltinScope
 	}
-	return GlobalScope
+	if s.outer.outer == nil {
+		return GlobalScope
+	}
+	return LocalScope
 }
 
 func (s *SymbolTable) Resolve(name string) (Symbol, bool) {

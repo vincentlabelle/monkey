@@ -679,6 +679,44 @@ func Test(t *testing.T) {
 				&object.Integer{Value: 26},
 			},
 		},
+		{
+			`len([]); push([], 1);`,
+			[]code.Instructions{
+				code.Make(code.OpGetBuiltin, 0),
+				code.Make(code.OpArray, 0),
+				code.Make(code.OpCall, 1),
+				code.Make(code.OpPop),
+				code.Make(code.OpGetBuiltin, 5),
+				code.Make(code.OpArray, 0),
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpCall, 2),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 1},
+			},
+		},
+		{
+			`fn() { len([]); };`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.CompiledFunction{
+					Instructions: code.Concatenate(
+						[]code.Instructions{
+							code.Make(code.OpGetBuiltin, 0),
+							code.Make(code.OpArray, 0),
+							code.Make(code.OpCall, 1),
+							code.Make(code.OpReturnValue),
+						},
+					),
+					NumLocals:     0,
+					NumParameters: 0,
+				},
+			},
+		},
 	}
 
 	for _, s := range setup {
@@ -826,12 +864,23 @@ func testCompiledFunctionObject(
 ) {
 	testInstructions(t, actual.Instructions, expected.Instructions)
 	testNumLocals(t, actual.NumLocals, expected.NumLocals)
+	testNumParameters(t, actual.NumParameters, expected.NumParameters)
 }
 
 func testNumLocals(t *testing.T, actual int, expected int) {
 	if actual != expected {
 		t.Fatalf(
 			"number of locals mismatch. got=%v, expected=%v",
+			actual,
+			expected,
+		)
+	}
+}
+
+func testNumParameters(t *testing.T, actual int, expected int) {
+	if actual != expected {
+		t.Fatalf(
+			"number of parameters mismatch. got=%v, expected=%v",
 			actual,
 			expected,
 		)

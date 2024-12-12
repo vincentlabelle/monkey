@@ -5,6 +5,18 @@ import (
 	"log"
 )
 
+var Builtins = []struct {
+	Name    string
+	Builtin *Builtin
+}{
+	{"len", &Builtin{Fn: len_}},
+	{"puts", &Builtin{Fn: puts}},
+	{"first", &Builtin{Fn: first}},
+	{"last", &Builtin{Fn: last}},
+	{"rest", &Builtin{Fn: rest}},
+	{"push", &Builtin{Fn: push}},
+}
+
 func len_(args ...Object) Object {
 	if len(args) != 1 {
 		message := "cannot call built-in; one argument is expected"

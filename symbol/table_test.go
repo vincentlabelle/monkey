@@ -66,6 +66,7 @@ func TestResolve(t *testing.T) {
 			[]Symbol{
 				{Name: "a", Scope: GlobalScope, Index: 0},
 				{Name: "b", Scope: GlobalScope, Index: 1},
+				{Name: "len", Scope: BuiltinScope, Index: 0},
 			},
 		},
 		{
@@ -75,6 +76,7 @@ func TestResolve(t *testing.T) {
 				{Name: "b", Scope: GlobalScope, Index: 1},
 				{Name: "c", Scope: LocalScope, Index: 0},
 				{Name: "d", Scope: LocalScope, Index: 1},
+				{Name: "len", Scope: BuiltinScope, Index: 0},
 			},
 		},
 		{
@@ -84,6 +86,7 @@ func TestResolve(t *testing.T) {
 				{Name: "b", Scope: GlobalScope, Index: 1},
 				{Name: "e", Scope: LocalScope, Index: 0},
 				{Name: "f", Scope: LocalScope, Index: 1},
+				{Name: "len", Scope: BuiltinScope, Index: 0},
 			},
 		},
 	}

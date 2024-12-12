@@ -11,13 +11,9 @@ func NewEnvironment() *Environment {
 }
 
 func newBuiltinEnvironment() *Environment {
-	store := map[string]Object{
-		"len":   &Builtin{Fn: len_},
-		"first": &Builtin{Fn: first},
-		"last":  &Builtin{Fn: last},
-		"rest":  &Builtin{Fn: rest},
-		"push":  &Builtin{Fn: push},
-		"puts":  &Builtin{Fn: puts},
+	store := map[string]Object{}
+	for _, b := range Builtins {
+		store[b.Name] = b.Builtin
 	}
 	return &Environment{store: store}
 }
