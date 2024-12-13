@@ -28,7 +28,10 @@ const (
 	OpSetLocal
 	OpGetLocal
 	OpGetBuiltin
+	OpGetFree
 	OpCall
 	OpReturnValue
 	OpReturn
+	OpClosure
+	OpCurrentClosure
 )

@@ -1,11 +1,20 @@
 package vm
 
 import (
+	"github.com/vincentlabelle/monkey/code"
 	"github.com/vincentlabelle/monkey/object"
 )
 
 type Frame struct {
-	Fn             *object.CompiledFunction
+	Closure        *object.Closure
 	InsIndex       int
 	BaseStackIndex int
+}
+
+func (f *Frame) Instructions() code.Instructions {
+	return f.Closure.Fn.Instructions
+}
+
+func (f *Frame) NumLocals() int {
+	return f.Closure.Fn.NumLocals
 }

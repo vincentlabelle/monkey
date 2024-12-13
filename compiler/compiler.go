@@ -249,8 +249,7 @@ func (c *Compiler) replaceInstruction(pos int, instruction []byte) {
 
 func (c *Compiler) compileIdentifier(expression *ast.Identifier) {
 	sym := c.resolveSymbol(expression)
-	op := c.getOpGet(sym)
-	c.emit(op, sym.Index)
+	c.loadSymbol(sym)
 }
 
 func (c *Compiler) resolveSymbol(expression *ast.Identifier) symbol.Symbol {
@@ -262,14 +261,19 @@ func (c *Compiler) resolveSymbol(expression *ast.Identifier) symbol.Symbol {
 	return sym
 }
 
-func (c *Compiler) getOpGet(sym symbol.Symbol) code.Opcode {
-	if sym.Scope == symbol.BuiltinScope {
-		return code.OpGetBuiltin
+func (c *Compiler) loadSymbol(sym symbol.Symbol) {
+	switch sym.Scope {
+	case symbol.BuiltinScope:
+		c.emit(code.OpGetBuiltin, sym.Index)
+	case symbol.GlobalScope:
+		c.emit(code.OpGetGlobal, sym.Index)
+	case symbol.FreeScope:
+		c.emit(code.OpGetFree, sym.Index)
+	case symbol.FunctionScope:
+		c.emit(code.OpCurrentClosure)
+	default:
+		c.emit(code.OpGetLocal, sym.Index)
 	}
-	if sym.Scope == symbol.GlobalScope {
-		return code.OpGetGlobal
-	}
-	return code.OpGetLocal
 }
 
 func (c *Compiler) compileArrayLiteral(expression *ast.ArrayLiteral) {
@@ -305,22 +309,29 @@ func (c *Compiler) compileIndexExpression(expression *ast.IndexExpression) {
 }
 
 func (c *Compiler) compileFunctionLiteral(expression *ast.FunctionLiteral) {
-	instructions, count := c.innerCompileFunctionLiteral(expression)
+	instructions, count, free := c.innerCompileFunctionLiteral(expression)
 	obj := &object.CompiledFunction{
 		Instructions:  instructions,
 		NumLocals:     count,
 		NumParameters: len(expression.Parameters),
 	}
-	c.compileConstant(obj)
+	c.compileClosure(obj, free)
 }
 
 func (c *Compiler) innerCompileFunctionLiteral(
 	expression *ast.FunctionLiteral,
-) (code.Instructions, int) {
+) (code.Instructions, int, []symbol.Symbol) {
 	c.enterScope()
+	c.defineFunctionName(expression)
 	c.compileFunctionParameters(expression.Parameters)
 	c.compileFunctionBody(expression.Body)
 	return c.leaveScope()
+}
+
+func (c *Compiler) defineFunctionName(expression *ast.FunctionLiteral) {
+	if expression.Name != "" {
+		c.symbolTable.DefineFunctionName(expression.Name)
+	}
 }
 
 func (c *Compiler) compileFunctionParameters(expressions []*ast.Identifier) {
@@ -346,10 +357,10 @@ func (c *Compiler) compileNonEmptyFunctionBody(statement *ast.BlockStatement) {
 	}
 }
 
-func (c *Compiler) leaveScope() (code.Instructions, int) {
+func (c *Compiler) leaveScope() (code.Instructions, int, []symbol.Symbol) {
 	instructions := c.innerLeaveScope()
-	count := c.leaveSymbolTable()
-	return instructions, count
+	count, free := c.leaveSymbolTable()
+	return instructions, count, free
 }
 
 func (c *Compiler) innerLeaveScope() code.Instructions {
@@ -359,10 +370,23 @@ func (c *Compiler) innerLeaveScope() code.Instructions {
 	return instructions
 }
 
-func (c *Compiler) leaveSymbolTable() int {
+func (c *Compiler) leaveSymbolTable() (int, []symbol.Symbol) {
 	count := c.symbolTable.CountDefinitions()
+	free := c.symbolTable.Free()
 	c.symbolTable = c.symbolTable.Outer()
-	return count
+	return count, free
+}
+
+func (c *Compiler) compileClosure(obj object.Object, free []symbol.Symbol) {
+	c.loadSymbols(free)
+	pos := c.addConstant(obj)
+	c.emit(code.OpClosure, pos, len(free))
+}
+
+func (c *Compiler) loadSymbols(symbols []symbol.Symbol) {
+	for _, sym := range symbols {
+		c.loadSymbol(sym)
+	}
 }
 
 func (c *Compiler) compileCallExpression(expression *ast.CallExpression) {
@@ -372,8 +396,8 @@ func (c *Compiler) compileCallExpression(expression *ast.CallExpression) {
 }
 
 func (c *Compiler) compileLetStatement(statement *ast.LetStatement) int {
-	c.compileExpression(statement.Value)
 	sym := c.defineSymbol(statement.Name)
+	c.compileExpression(statement.Value)
 	op := c.getOpSet(sym)
 	return c.emit(op, sym.Index)
 }

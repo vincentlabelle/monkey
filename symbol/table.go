@@ -4,37 +4,45 @@ import "github.com/vincentlabelle/monkey/object"
 
 type SymbolTable struct {
 	store map[string]Symbol
+	count int
 	outer *SymbolTable
+	free  []Symbol
 }
 
 func NewTable() *SymbolTable {
-	return &SymbolTable{
-		store: map[string]Symbol{},
-		outer: newBuiltinTable(),
-	}
+	outer := newBuiltinTable()
+	return NewInnerTable(outer)
 }
 
 func newBuiltinTable() *SymbolTable {
-	store := map[string]Symbol{}
+	t := newTable()
 	for i, b := range object.Builtins {
-		store[b.Name] = Symbol{b.Name, BuiltinScope, i}
+		t.store[b.Name] = Symbol{b.Name, BuiltinScope, i}
 	}
-	return &SymbolTable{store: store}
+	return t
+}
+
+func newTable() *SymbolTable {
+	return &SymbolTable{
+		store: map[string]Symbol{},
+		free:  []Symbol{},
+	}
 }
 
 func NewInnerTable(outer *SymbolTable) *SymbolTable {
-	table := NewTable()
-	table.outer = outer
-	return table
+	t := newTable()
+	t.outer = outer
+	return t
 }
 
 func (s *SymbolTable) Define(name string) Symbol {
 	sym := Symbol{
 		Name:  name,
 		Scope: s.getScope(),
-		Index: s.CountDefinitions(),
+		Index: s.count,
 	}
 	s.store[name] = sym
+	s.count++
 	return sym
 }
 
@@ -48,18 +56,38 @@ func (s *SymbolTable) getScope() SymbolScope {
 	return LocalScope
 }
 
+func (s *SymbolTable) CountDefinitions() int {
+	return s.count
+}
+
+func (s *SymbolTable) DefineFunctionName(name string) Symbol {
+	sym := Symbol{Name: name, Scope: FunctionScope, Index: 0}
+	s.store[name] = sym
+	return sym
+}
+
 func (s *SymbolTable) Resolve(name string) (Symbol, bool) {
 	sym, ok := s.store[name]
 	if !ok && s.outer != nil {
-		return s.outer.Resolve(name)
+		sym, ok = s.outer.Resolve(name)
+		if ok && (sym.Scope == LocalScope || sym.Scope == FreeScope) {
+			sym = s.Redefine(sym)
+		}
 	}
 	return sym, ok
+}
+
+func (s *SymbolTable) Redefine(sym Symbol) Symbol {
+	free := Symbol{Name: sym.Name, Scope: FreeScope, Index: len(s.free)}
+	s.store[free.Name] = free
+	s.free = append(s.free, sym)
+	return free
 }
 
 func (s *SymbolTable) Outer() *SymbolTable {
 	return s.outer
 }
 
-func (s *SymbolTable) CountDefinitions() int {
-	return len(s.store)
+func (s *SymbolTable) Free() []Symbol {
+	return s.free
 }

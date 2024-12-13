@@ -13,11 +13,13 @@ func TestInstructions(t *testing.T) {
 				Make(OpCall, 1),
 				Make(OpConstant, 2),
 				Make(OpConstant, 65535),
+				Make(OpClosure, 65535, 255),
 			},
 			"0000 OpAdd\n" +
 				"0001 OpCall 1\n" +
 				"0003 OpConstant 2\n" +
-				"0006 OpConstant 65535\n",
+				"0006 OpConstant 65535\n" +
+				"0009 OpClosure 65535 255\n",
 		},
 	}
 

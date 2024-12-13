@@ -84,6 +84,8 @@ func TestResolve(t *testing.T) {
 			[]Symbol{
 				{Name: "a", Scope: GlobalScope, Index: 0},
 				{Name: "b", Scope: GlobalScope, Index: 1},
+				{Name: "c", Scope: FreeScope, Index: 0},
+				{Name: "d", Scope: FreeScope, Index: 1},
 				{Name: "e", Scope: LocalScope, Index: 0},
 				{Name: "f", Scope: LocalScope, Index: 1},
 				{Name: "len", Scope: BuiltinScope, Index: 0},
@@ -101,5 +103,19 @@ func TestResolve(t *testing.T) {
 				t.Fatalf("symbol mismatch. got=%v, expected=%v", a, e)
 			}
 		}
+	}
+}
+
+func TestDefineFunctionName(t *testing.T) {
+	global := NewTable()
+	expected := Symbol{Name: "a", Scope: FunctionScope, Index: 0}
+	global.DefineFunctionName(expected.Name)
+
+	actual, ok := global.Resolve(expected.Name)
+	if !ok {
+		t.Fatalf("symbol missing. expected=%v", expected.Name)
+	}
+	if actual != expected {
+		t.Fatalf("symbol mismatch. got=%v, expected=%v", actual, expected)
 	}
 }

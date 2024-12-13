@@ -66,10 +66,17 @@ func (p *Parser) parseLetStatement() *ast.LetStatement {
 	}
 	p.forward()
 	value := p.parseExpression(LOWEST)
+	p.setNameOnValue(name, value)
 	if p.isPeekToken(token.SEMICOLON) {
 		p.forward()
 	}
 	return &ast.LetStatement{Name: name, Value: value}
+}
+
+func (p *Parser) setNameOnValue(name *ast.Identifier, value ast.Expression) {
+	if fl, ok := value.(*ast.FunctionLiteral); ok {
+		fl.Name = name.Value
+	}
 }
 
 func (p *Parser) parseIdentifier() *ast.Identifier {

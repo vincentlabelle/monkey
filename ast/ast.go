@@ -71,6 +71,7 @@ func (bl *BooleanLiteral) node()           {}
 func (bl *BooleanLiteral) expressionNode() {}
 
 type FunctionLiteral struct {
+	Name       string
 	Parameters []*Identifier
 	Body       *BlockStatement
 }

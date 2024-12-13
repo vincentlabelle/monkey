@@ -110,6 +110,15 @@ func (cf *CompiledFunction) Inspect() string {
 	return "fn(...) {...}"
 }
 
+type Closure struct {
+	Fn   *CompiledFunction
+	Free []Object
+}
+
+func (c *Closure) Inspect() string {
+	return "fn(...) {...}"
+}
+
 type Builtin struct {
 	Fn func(...Object) Object
 }

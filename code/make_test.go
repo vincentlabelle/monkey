@@ -23,6 +23,11 @@ func TestMake(t *testing.T) {
 			[]int{255},
 			[]byte{byte(OpCall), 255},
 		},
+		{
+			OpClosure,
+			[]int{65534, 255},
+			[]byte{byte(OpClosure), 255, 254, 255},
+		},
 	}
 
 	for _, s := range setup {

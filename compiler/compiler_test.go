@@ -428,7 +428,7 @@ func Test(t *testing.T) {
 		{
 			`fn() { return 5 + 10; };`,
 			[]code.Instructions{
-				code.Make(code.OpConstant, 2),
+				code.Make(code.OpClosure, 2, 0),
 				code.Make(code.OpPop),
 			},
 			[]object.Object{
@@ -451,7 +451,7 @@ func Test(t *testing.T) {
 		{
 			`fn() { 5 + 10; };`,
 			[]code.Instructions{
-				code.Make(code.OpConstant, 2),
+				code.Make(code.OpClosure, 2, 0),
 				code.Make(code.OpPop),
 			},
 			[]object.Object{
@@ -474,7 +474,7 @@ func Test(t *testing.T) {
 		{
 			`fn() { 1; 2; };`,
 			[]code.Instructions{
-				code.Make(code.OpConstant, 2),
+				code.Make(code.OpClosure, 2, 0),
 				code.Make(code.OpPop),
 			},
 			[]object.Object{
@@ -497,7 +497,7 @@ func Test(t *testing.T) {
 		{
 			`fn() {};`,
 			[]code.Instructions{
-				code.Make(code.OpConstant, 0),
+				code.Make(code.OpClosure, 0, 0),
 				code.Make(code.OpPop),
 			},
 			[]object.Object{
@@ -511,7 +511,7 @@ func Test(t *testing.T) {
 		{
 			`fn() { 24; }();`,
 			[]code.Instructions{
-				code.Make(code.OpConstant, 1),
+				code.Make(code.OpClosure, 1, 0),
 				code.Make(code.OpCall, 0),
 				code.Make(code.OpPop),
 			},
@@ -532,7 +532,7 @@ func Test(t *testing.T) {
 		{
 			`let noArg = fn() { 24; }; noArg();`,
 			[]code.Instructions{
-				code.Make(code.OpConstant, 1),
+				code.Make(code.OpClosure, 1, 0),
 				code.Make(code.OpSetGlobal, 0),
 				code.Make(code.OpGetGlobal, 0),
 				code.Make(code.OpCall, 0),
@@ -557,7 +557,7 @@ func Test(t *testing.T) {
 			[]code.Instructions{
 				code.Make(code.OpConstant, 0),
 				code.Make(code.OpSetGlobal, 0),
-				code.Make(code.OpConstant, 1),
+				code.Make(code.OpClosure, 1, 0),
 				code.Make(code.OpPop),
 			},
 			[]object.Object{
@@ -577,7 +577,7 @@ func Test(t *testing.T) {
 		{
 			`fn() { let num = 55; num; };`,
 			[]code.Instructions{
-				code.Make(code.OpConstant, 1),
+				code.Make(code.OpClosure, 1, 0),
 				code.Make(code.OpPop),
 			},
 			[]object.Object{
@@ -599,7 +599,7 @@ func Test(t *testing.T) {
 		{
 			`fn() { let a = 55; let b = 77; a + b; };`,
 			[]code.Instructions{
-				code.Make(code.OpConstant, 2),
+				code.Make(code.OpClosure, 2, 0),
 				code.Make(code.OpPop),
 			},
 			[]object.Object{
@@ -626,7 +626,7 @@ func Test(t *testing.T) {
 		{
 			`let oneArg = fn(a) { a }; oneArg(24);`,
 			[]code.Instructions{
-				code.Make(code.OpConstant, 0),
+				code.Make(code.OpClosure, 0, 0),
 				code.Make(code.OpSetGlobal, 0),
 				code.Make(code.OpGetGlobal, 0),
 				code.Make(code.OpConstant, 1),
@@ -650,7 +650,7 @@ func Test(t *testing.T) {
 		{
 			`let manyArg = fn(a, b, c) { a; b; c; }; manyArg(24, 25, 26);`,
 			[]code.Instructions{
-				code.Make(code.OpConstant, 0),
+				code.Make(code.OpClosure, 0, 0),
 				code.Make(code.OpSetGlobal, 0),
 				code.Make(code.OpGetGlobal, 0),
 				code.Make(code.OpConstant, 1),
@@ -699,7 +699,7 @@ func Test(t *testing.T) {
 		{
 			`fn() { len([]); };`,
 			[]code.Instructions{
-				code.Make(code.OpConstant, 0),
+				code.Make(code.OpClosure, 0, 0),
 				code.Make(code.OpPop),
 			},
 			[]object.Object{
@@ -713,6 +713,233 @@ func Test(t *testing.T) {
 						},
 					),
 					NumLocals:     0,
+					NumParameters: 0,
+				},
+			},
+		},
+		{
+			`fn(a) { fn(b) { a + b; } };`,
+			[]code.Instructions{
+				code.Make(code.OpClosure, 1, 0),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.CompiledFunction{
+					Instructions: code.Concatenate(
+						[]code.Instructions{
+							code.Make(code.OpGetFree, 0),
+							code.Make(code.OpGetLocal, 0),
+							code.Make(code.OpAdd),
+							code.Make(code.OpReturnValue),
+						},
+					),
+					NumLocals:     1,
+					NumParameters: 1,
+				},
+				&object.CompiledFunction{
+					Instructions: code.Concatenate(
+						[]code.Instructions{
+							code.Make(code.OpGetLocal, 0),
+							code.Make(code.OpClosure, 0, 1),
+							code.Make(code.OpReturnValue),
+						},
+					),
+					NumLocals:     1,
+					NumParameters: 1,
+				},
+			},
+		},
+		{
+			`fn(a) { fn(b) { fn(c) { a + b + c; } } };`,
+			[]code.Instructions{
+				code.Make(code.OpClosure, 2, 0),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.CompiledFunction{
+					Instructions: code.Concatenate(
+						[]code.Instructions{
+							code.Make(code.OpGetFree, 0),
+							code.Make(code.OpGetFree, 1),
+							code.Make(code.OpAdd),
+							code.Make(code.OpGetLocal, 0),
+							code.Make(code.OpAdd),
+							code.Make(code.OpReturnValue),
+						},
+					),
+					NumLocals:     1,
+					NumParameters: 1,
+				},
+				&object.CompiledFunction{
+					Instructions: code.Concatenate(
+						[]code.Instructions{
+							code.Make(code.OpGetFree, 0),
+							code.Make(code.OpGetLocal, 0),
+							code.Make(code.OpClosure, 0, 2),
+							code.Make(code.OpReturnValue),
+						},
+					),
+					NumLocals:     1,
+					NumParameters: 1,
+				},
+				&object.CompiledFunction{
+					Instructions: code.Concatenate(
+						[]code.Instructions{
+							code.Make(code.OpGetLocal, 0),
+							code.Make(code.OpClosure, 1, 1),
+							code.Make(code.OpReturnValue),
+						},
+					),
+					NumLocals:     1,
+					NumParameters: 1,
+				},
+			},
+		},
+		{
+			`
+			let global = 55;
+			fn() {
+				let a = 66;
+				fn() {
+					let b = 77;
+					fn() {
+						let c = 88;
+						global + a + b + c;
+					};
+				};
+			};
+			`,
+			[]code.Instructions{
+				code.Make(code.OpConstant, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpClosure, 6, 0),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 55},
+				&object.Integer{Value: 66},
+				&object.Integer{Value: 77},
+				&object.Integer{Value: 88},
+				&object.CompiledFunction{
+					Instructions: code.Concatenate(
+						[]code.Instructions{
+							code.Make(code.OpConstant, 3),
+							code.Make(code.OpSetLocal, 0),
+							code.Make(code.OpGetGlobal, 0),
+							code.Make(code.OpGetFree, 0),
+							code.Make(code.OpAdd),
+							code.Make(code.OpGetFree, 1),
+							code.Make(code.OpAdd),
+							code.Make(code.OpGetLocal, 0),
+							code.Make(code.OpAdd),
+							code.Make(code.OpReturnValue),
+						},
+					),
+					NumLocals:     1,
+					NumParameters: 0,
+				},
+				&object.CompiledFunction{
+					Instructions: code.Concatenate(
+						[]code.Instructions{
+							code.Make(code.OpConstant, 2),
+							code.Make(code.OpSetLocal, 0),
+							code.Make(code.OpGetFree, 0),
+							code.Make(code.OpGetLocal, 0),
+							code.Make(code.OpClosure, 4, 2),
+							code.Make(code.OpReturnValue),
+						},
+					),
+					NumLocals:     1,
+					NumParameters: 0,
+				},
+				&object.CompiledFunction{
+					Instructions: code.Concatenate(
+						[]code.Instructions{
+							code.Make(code.OpConstant, 1),
+							code.Make(code.OpSetLocal, 0),
+							code.Make(code.OpGetLocal, 0),
+							code.Make(code.OpClosure, 5, 1),
+							code.Make(code.OpReturnValue),
+						},
+					),
+					NumLocals:     1,
+					NumParameters: 0,
+				},
+			},
+		},
+		{
+			`let countDown = fn(x) { countDown(x - 1); }; countDown(1);`,
+			[]code.Instructions{
+				code.Make(code.OpClosure, 1, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpConstant, 2),
+				code.Make(code.OpCall, 1),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 1},
+				&object.CompiledFunction{
+					Instructions: code.Concatenate(
+						[]code.Instructions{
+							code.Make(code.OpCurrentClosure),
+							code.Make(code.OpGetLocal, 0),
+							code.Make(code.OpConstant, 0),
+							code.Make(code.OpSub),
+							code.Make(code.OpCall, 1),
+							code.Make(code.OpReturnValue),
+						},
+					),
+					NumLocals:     1,
+					NumParameters: 1,
+				},
+				&object.Integer{Value: 1},
+			},
+		},
+		{
+			`
+			let wrapper = fn() {
+				let countDown = fn(x) { countDown(x - 1); };
+				countDown(1);
+			};
+			wrapper();
+			`,
+			[]code.Instructions{
+				code.Make(code.OpClosure, 3, 0),
+				code.Make(code.OpSetGlobal, 0),
+				code.Make(code.OpGetGlobal, 0),
+				code.Make(code.OpCall, 0),
+				code.Make(code.OpPop),
+			},
+			[]object.Object{
+				&object.Integer{Value: 1},
+				&object.CompiledFunction{
+					Instructions: code.Concatenate(
+						[]code.Instructions{
+							code.Make(code.OpCurrentClosure),
+							code.Make(code.OpGetLocal, 0),
+							code.Make(code.OpConstant, 0),
+							code.Make(code.OpSub),
+							code.Make(code.OpCall, 1),
+							code.Make(code.OpReturnValue),
+						},
+					),
+					NumLocals:     1,
+					NumParameters: 1,
+				},
+				&object.Integer{Value: 1},
+				&object.CompiledFunction{
+					Instructions: code.Concatenate(
+						[]code.Instructions{
+							code.Make(code.OpClosure, 1, 0),
+							code.Make(code.OpSetLocal, 0),
+							code.Make(code.OpGetLocal, 0),
+							code.Make(code.OpConstant, 2),
+							code.Make(code.OpCall, 1),
+							code.Make(code.OpReturnValue),
+						},
+					),
+					NumLocals:     1,
 					NumParameters: 0,
 				},
 			},

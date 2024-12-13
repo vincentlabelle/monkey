@@ -38,8 +38,10 @@ func New(code *compiler.Bytecode) *VM {
 
 func (vm *VM) pushInitialFrame(instructions code.Instructions) {
 	frame := &Frame{
-		Fn: &object.CompiledFunction{
-			Instructions: instructions,
+		Closure: &object.Closure{
+			Fn: &object.CompiledFunction{
+				Instructions: instructions,
+			},
 		},
 	}
 	vm.pushFrame(frame)
@@ -51,8 +53,8 @@ func (vm *VM) LastPopped() object.Object {
 
 func (vm *VM) Run() {
 	frame := vm.currentFrame()
-	for frame.InsIndex < len(frame.Fn.Instructions) {
-		remain := frame.Fn.Instructions[frame.InsIndex:]
+	for frame.InsIndex < len(frame.Instructions()) {
+		remain := frame.Instructions()[frame.InsIndex:]
 		op, operands, width := code.Unmake(remain)
 		frame.InsIndex += width // Before run, because of jumps!!
 		vm.run(op, operands)
@@ -115,8 +117,14 @@ func (vm *VM) run(op code.Opcode, operands []int) {
 		vm.runOpGetLocal(operands)
 	case code.OpGetBuiltin:
 		vm.runOpGetBuiltin(operands)
+	case code.OpGetFree:
+		vm.runOpGetFree(operands)
 	case code.OpCall:
 		vm.runOpCall(operands)
+	case code.OpClosure:
+		vm.runOpClosure(operands)
+	case code.OpCurrentClosure:
+		vm.runOpCurrentClosure()
 	case code.OpReturnValue:
 		vm.runOpReturnValue()
 	case code.OpReturn:
@@ -288,6 +296,13 @@ func (vm *VM) runOpGetBuiltin(operands []int) {
 	vm.push(b.Builtin)
 }
 
+func (vm *VM) runOpGetFree(operands []int) {
+	operand := vm.getOperand(operands)
+	frame := vm.currentFrame()
+	obj := frame.Closure.Free[operand]
+	vm.push(obj)
+}
+
 func (vm *VM) runOpCall(operands []int) {
 	operand := vm.getOperand(operands)
 	fn := vm.getFunction(operand)
@@ -300,8 +315,8 @@ func (vm *VM) getFunction(operand int) object.Object {
 
 func (vm *VM) dispatchCall(fn object.Object, operand int) {
 	switch f := fn.(type) {
-	case *object.CompiledFunction:
-		vm.runCompiledFunction(f, operand)
+	case *object.Closure:
+		vm.runClosure(f, operand)
 	case *object.Builtin:
 		vm.runBuiltinFunction(f, operand)
 	default:
@@ -311,14 +326,14 @@ func (vm *VM) dispatchCall(fn object.Object, operand int) {
 	}
 }
 
-func (vm *VM) runCompiledFunction(fn *object.CompiledFunction, operand int) {
-	vm.validateArguments(fn, operand)
-	frame := &Frame{Fn: fn, BaseStackIndex: vm.stackIndex - operand}
+func (vm *VM) runClosure(closure *object.Closure, operand int) {
+	vm.validateArguments(closure, operand)
+	frame := &Frame{Closure: closure, BaseStackIndex: vm.stackIndex - operand}
 	vm.pushFrame(frame)
 }
 
-func (vm *VM) validateArguments(fn *object.CompiledFunction, operand int) {
-	if fn.NumParameters != operand {
+func (vm *VM) validateArguments(closure *object.Closure, operand int) {
+	if closure.Fn.NumParameters != operand {
 		message := "cannot run virtual machine; " +
 			"unexpected number of arguments in call to function"
 		log.Fatal(message)
@@ -328,23 +343,50 @@ func (vm *VM) validateArguments(fn *object.CompiledFunction, operand int) {
 func (vm *VM) pushFrame(frame *Frame) {
 	vm.frames[vm.framesIndex] = frame
 	vm.framesIndex++
-	vm.stackIndex += frame.Fn.NumLocals
+	vm.stackIndex += frame.NumLocals()
 }
 
 func (vm *VM) runBuiltinFunction(fn *object.Builtin, operand int) {
-	arguments := vm.getBuiltinArguments(operand)
+	arguments := vm.popNReverse(operand)
 	vm.pop() // Pop builtin!
 	obj := fn.Fn(arguments...)
 	vm.push(obj)
 }
 
-func (vm *VM) getBuiltinArguments(operand int) []object.Object {
-	arguments := []object.Object{}
-	for i := 0; i < operand; i++ {
-		arguments = append(arguments, vm.pop())
+func (vm *VM) runOpClosure(operands []int) {
+	index, count := vm.getTwoOperands(operands)
+	obj := vm.getClosure(index, count)
+	vm.push(obj)
+}
+
+func (vm *VM) getTwoOperands(operands []int) (int, int) {
+	if len(operands) < 2 {
+		message := "cannot run virtual machine; " +
+			"unexpected number of operands encountered"
+		log.Fatal(message)
 	}
-	slices.Reverse(arguments)
-	return arguments
+	return operands[0], operands[1]
+}
+
+func (vm *VM) getClosure(index int, count int) *object.Closure {
+	obj := vm.getCompiledFunction(index)
+	free := vm.popNReverse(count)
+	return &object.Closure{Fn: obj, Free: free}
+}
+
+func (vm *VM) getCompiledFunction(index int) *object.CompiledFunction {
+	obj, ok := vm.constants[index].(*object.CompiledFunction)
+	if !ok {
+		message := "cannot run virtual machine; " +
+			"unexpected constant when expecting function"
+		log.Fatal(message)
+	}
+	return obj
+}
+
+func (vm *VM) runOpCurrentClosure() {
+	frame := vm.currentFrame()
+	vm.push(frame.Closure)
 }
 
 func (vm *VM) runOpReturnValue() {

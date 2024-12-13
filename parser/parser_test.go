@@ -929,6 +929,21 @@ func Test(t *testing.T) {
 				},
 			},
 		},
+		{
+			input: `let myFunction = fn() {};`,
+			expected: &ast.Program{
+				Statements: []ast.Statement{
+					&ast.LetStatement{
+						Name: &ast.Identifier{Value: "myFunction"},
+						Value: &ast.FunctionLiteral{
+							Name:       "myFunction",
+							Parameters: []*ast.Identifier{},
+							Body:       &ast.BlockStatement{},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, s := range setup {
@@ -1240,6 +1255,13 @@ func testFunctionLiteral(
 	actual *ast.FunctionLiteral,
 	expected *ast.FunctionLiteral,
 ) {
+	if actual.Name != expected.Name {
+		t.Fatalf(
+			"function literal name mismatch; got=%v, expected=%v",
+			actual.Name,
+			expected.Name,
+		)
+	}
 	testIdentifiers(t, actual.Parameters, expected.Parameters)
 	testBlockStatement(t, actual.Body, expected.Body)
 }
