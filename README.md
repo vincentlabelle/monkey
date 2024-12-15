@@ -1,8 +1,8 @@
 # Monkey
 
-An interpreter for the Monkey programming language written in Go as described
-in [Ball, T. (2016). _Writing An Interpreter In
-Go._](https://interpreterbook.com/).
+An interpreter and a compiler for the Monkey programming language written in Go
+as described in [Ball, T. (2016). _Writing An Interpreter In Go._](https://interpreterbook.com/)
+and [Ball, T. (2018). _Writing A Compiler In Go._](https://compilerbook.com/).
 
 ## Features
 
